@@ -1,0 +1,455 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// ─── ENUMS (convertidos para String - compatibilidade SQLite) ────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ─── USERS ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid())
+  name         String    
+  email        String    @unique 
+  passwordHash String    @map("password_hash") 
+  role         String      @default("viewer")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  areaScopes          UserAreaScope[]
+  reportsAuthored     Report[]          @relation("ReportAuthor")
+  demandsCreated      Demand[]          @relation("DemandCreator")
+  demandsOwned        Demand[]          @relation("DemandResponsible")
+  comments            Comment[]
+  demandUpdates       DemandUpdate[]
+  attachments         Attachment[]
+  evidenceRequests    EvidenceRequest[] @relation("EvidenceRequester")
+  evidenceResponsible EvidenceRequest[] @relation("EvidenceResponsible")
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  contractsOwned      Contract[]
+  agendasCreated      MeetingAgenda[]
+  projectsOwned       Project[]   @relation("ProjectResponsible")
+
+  @@map("users")
+}
+
+// ─── USER AREA SCOPES ────────────────────────────────────────────────────────
+
+model UserAreaScope {
+  id        String  @id @default(uuid())
+  userId    String  @map("user_id")
+  areaId    String  @map("area_id")
+  canWrite  Boolean @default(false) @map("can_write")
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  area Area @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, areaId])
+  @@map("user_area_scopes")
+}
+
+// ─── AREAS ───────────────────────────────────────────────────────────────────
+
+model Area {
+  id            String   @id @default(uuid())
+  name          String   
+  code          String   @unique 
+  isOperational Boolean  @default(false) @map("is_operational")
+  isActive      Boolean  @default(true) @map("is_active")
+  description   String? 
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  userScopes  UserAreaScope[]
+  reports     Report[]
+  contracts   Contract[]
+  demands     Demand[]
+
+  @@map("areas")
+}
+
+// ─── CONTRACTS ───────────────────────────────────────────────────────────────
+
+model Contract {
+  id             String         @id @default(uuid())
+  areaId         String         @map("area_id")
+  number         String         
+  name           String         
+  client         String         
+  description    String?       
+  estimatedValue Float?         @map("estimated_value") 
+  startDate      DateTime?      @map("start_date")
+  endDate        DateTime?      @map("end_date")
+  responsibleId      String?  @map("responsible_id")
+  status             String   @default("active")
+  physicalProgress   Float?   @map("physical_progress")
+  financialProgress  Float?   @map("financial_progress")
+  riskNotes          String?  @map("risk_notes")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  area             Area              @relation(fields: [areaId], references: [id])
+  responsible      User?             @relation(fields: [responsibleId], references: [id])
+  reports          Report[]
+  demands          Demand[]
+  attachments      Attachment[]      @relation("ContractAttachments")
+  evidenceRequests EvidenceRequest[] @relation("ContractEvidence")
+
+  @@map("contracts")
+}
+
+// ─── REPORTS ─────────────────────────────────────────────────────────────────
+
+model Report {
+  id               String       @id @default(uuid())
+  areaId           String       @map("area_id")
+  contractId       String?      @map("contract_id")
+  authorId         String       @map("author_id")
+  title            String       
+  period           String?      
+  status           String @default("draft")
+  executiveSummary String?      @map("executive_summary")
+  evolutions       String?     
+  criticalPoints   String?      @map("critical_points")
+  attentionPoints  String?      @map("attention_points")
+  risks            String?     
+  blockers         String?     
+  decisionsNeeded  String?      @map("decisions_needed")
+  nextSteps        String?      @map("next_steps")
+  pendingItems     String?      @map("pending_items")
+  agendaSuggestion String?      @map("agenda_suggestion")
+  hasCritical      Boolean      @default(false) @map("has_critical")
+  hasDecisionNeeded Boolean     @default(false) @map("has_decision_needed")
+  publishedAt      DateTime?    @map("published_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  area             Area              @relation(fields: [areaId], references: [id])
+  contract         Contract?         @relation(fields: [contractId], references: [id])
+  author           User              @relation("ReportAuthor", fields: [authorId], references: [id])
+  versions         ReportVersion[]
+  comments         Comment[]         @relation("ReportComments")
+  evidenceRequests EvidenceRequest[] @relation("ReportEvidence")
+  attachments      Attachment[]      @relation("ReportAttachments")
+  demands          Demand[]
+  agendaItems      AgendaItem[]      @relation("ReportAgenda")
+
+  @@index([areaId, status])
+  @@index([publishedAt])
+  @@map("reports")
+}
+
+// ─── REPORT VERSIONS ─────────────────────────────────────────────────────────
+
+model ReportVersion {
+  id            String   @id @default(uuid())
+  reportId      String   @map("report_id")
+  versionNumber Int      @map("version_number")
+  snapshot      String
+  createdBy     String   @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, versionNumber])
+  @@map("report_versions")
+}
+
+// ─── DEMANDS ─────────────────────────────────────────────────────────────────
+
+model Demand {
+  id            String         @id @default(uuid())
+  areaId        String         @map("area_id")
+  contractId    String?        @map("contract_id")
+  reportId      String?        @map("report_id")
+  projectId     String?        @map("project_id")
+  title         String         
+  context       String?       
+  responsibleId String         @map("responsible_id")
+  createdById   String         @map("created_by_id")
+  status        String   @default("pending")
+  priority      String @default("medium")
+  dueDate       DateTime       @map("due_date")
+  completedAt   DateTime?      @map("completed_at")
+  blockers      String?       
+  supportNeeded String?        @map("support_needed")
+  origin        String   @default("manager")
+  isOverdue     Boolean        @default(false) @map("is_overdue")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  area             Area              @relation(fields: [areaId], references: [id])
+  contract         Contract?         @relation(fields: [contractId], references: [id])
+  report           Report?           @relation(fields: [reportId], references: [id])
+  project          Project?          @relation(fields: [projectId], references: [id])
+  responsible      User              @relation("DemandResponsible", fields: [responsibleId], references: [id])
+  createdBy        User              @relation("DemandCreator", fields: [createdById], references: [id])
+  updates          DemandUpdate[]
+  comments         Comment[]         @relation("DemandComments")
+  attachments      Attachment[]      @relation("DemandAttachments")
+  evidenceRequests EvidenceRequest[] @relation("DemandEvidence")
+  agendaItems      AgendaItem[]      @relation("DemandAgenda")
+
+  @@index([areaId, status])
+  @@index([dueDate, status])
+  @@index([responsibleId])
+  @@map("demands")
+}
+
+// ─── DEMAND UPDATES ───────────────────────────────────────────────────────────
+
+model DemandUpdate {
+  id           String        @id @default(uuid())
+  demandId     String        @map("demand_id")
+  authorId     String        @map("author_id")
+  content      String       
+  statusBefore String? @map("status_before")
+  statusAfter  String? @map("status_after")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  demand Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([demandId])
+  @@map("demand_updates")
+}
+
+// ─── COMMENTS ────────────────────────────────────────────────────────────────
+
+model Comment {
+  id         String      @id @default(uuid())
+  objectType String  @map("object_type")
+  objectId   String      @map("object_id")
+  parentId   String?     @map("parent_id")
+  authorId   String      @map("author_id")
+  type       String @default("observation")
+  content    String     
+  dueDate    DateTime?   @map("due_date")
+  isResolved Boolean     @default(false) @map("is_resolved")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  parent          Comment?         @relation("CommentThread", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  replies         Comment[]        @relation("CommentThread")
+  author          User             @relation(fields: [authorId], references: [id])
+  evidenceRequest EvidenceRequest?
+
+  reportRef Report?  @relation("ReportComments", fields: [objectId], references: [id], map: "comment_report_ref_fk")
+  demandRef Demand?  @relation("DemandComments", fields: [objectId], references: [id], map: "comment_demand_ref_fk")
+
+  @@index([objectType, objectId])
+  @@index([authorId])
+  @@map("comments")
+}
+
+// ─── EVIDENCE REQUESTS ───────────────────────────────────────────────────────
+
+model EvidenceRequest {
+  id            String         @id @default(uuid())
+  objectType    String     @map("object_type")
+  objectId      String         @map("object_id")
+  commentId     String?        @unique @map("comment_id")
+  requestedById String         @map("requested_by_id")
+  responsibleId String         @map("responsible_id")
+  description   String        
+  dueDate       DateTime?      @map("due_date")
+  status        String @default("pending")
+  responseNotes String?        @map("response_notes")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  resolvedAt    DateTime?      @map("resolved_at")
+
+  comment     Comment?     @relation(fields: [commentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  requestedBy User         @relation("EvidenceRequester", fields: [requestedById], references: [id])
+  responsible User         @relation("EvidenceResponsible", fields: [responsibleId], references: [id])
+  attachments Attachment[] @relation("EvidenceAttachments")
+
+  reportRef   Report?   @relation("ReportEvidence", fields: [objectId], references: [id], map: "ev_report_ref_fk")
+  contractRef Contract? @relation("ContractEvidence", fields: [objectId], references: [id], map: "ev_contract_ref_fk")
+  demandRef   Demand?   @relation("DemandEvidence", fields: [objectId], references: [id], map: "ev_demand_ref_fk")
+
+  @@index([objectType, objectId])
+  @@index([responsibleId, status])
+  @@map("evidence_requests")
+}
+
+// ─── ATTACHMENTS ─────────────────────────────────────────────────────────────
+
+model Attachment {
+  id                String     @id @default(uuid())
+  objectType        String @map("object_type")
+  objectId          String     @map("object_id")
+  uploadedById      String     @map("uploaded_by_id")
+  originalName      String     @map("original_name") 
+  storageKey        String     @map("storage_key") 
+  mimeType          String     @map("mime_type") 
+  sizeBytes         Int     @map("size_bytes")
+  evidenceRequestId String?    @map("evidence_request_id")
+  createdAt         DateTime   @default(now()) @map("created_at")
+
+  uploadedBy      User             @relation(fields: [uploadedById], references: [id])
+  evidenceRequest EvidenceRequest? @relation("EvidenceAttachments", fields: [evidenceRequestId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  reportRef   Report?   @relation("ReportAttachments", fields: [objectId], references: [id], map: "att_report_ref_fk")
+  demandRef   Demand?   @relation("DemandAttachments", fields: [objectId], references: [id], map: "att_demand_ref_fk")
+  contractRef Contract? @relation("ContractAttachments", fields: [objectId], references: [id], map: "att_contract_ref_fk")
+
+  @@index([objectType, objectId])
+  @@map("attachments")
+}
+
+// ─── PROJECTS (V2 — schema preparado) ────────────────────────────────────────
+
+model Project {
+  id              String        @id @default(uuid())
+  name            String        
+  objective       String?      
+  responsibleId   String        @map("responsible_id")
+  status          String @default("planned")
+  startDate       DateTime?     @map("start_date")
+  expectedEndDate DateTime?     @map("expected_end_date")
+  riskLevel       String     @default("low") @map("risk_level")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  responsibleUser User          @relation("ProjectResponsible", fields: [responsibleId], references: [id])
+  milestones  ProjectMilestone[]
+  updates     ProjectUpdate[]
+  demands     Demand[]
+
+  @@map("projects")
+}
+
+model ProjectMilestone {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  title       String    
+  description String?  
+  dueDate     DateTime  @map("due_date")
+  isCompleted Boolean   @default(false) @map("is_completed")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_milestones")
+}
+
+model ProjectUpdate {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  authorId  String   @map("author_id")
+  content   String  
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_updates")
+}
+
+// ─── MEETING AGENDAS ─────────────────────────────────────────────────────────
+
+model MeetingAgenda {
+  id          String       @id @default(uuid())
+  title       String       
+  objective   String?     
+  meetingDate DateTime?    @map("meeting_date")
+  scheduledAt DateTime?    @map("scheduled_at")
+  createdById String       @map("created_by_id")
+  status      String @default("preparing")
+  notes       String?     
+  minutesText String?      @map("minutes_text")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  createdBy User         @relation(fields: [createdById], references: [id])
+  items     AgendaItem[]
+
+  @@map("meeting_agendas")
+}
+
+model AgendaItem {
+  id               String           @id @default(uuid())
+  agendaId         String           @map("agenda_id")
+  order            Int              @default(0)
+  title            String           
+  description      String?         
+  origin           String?          
+  reportId         String?          @map("report_id")
+  demandId         String?          @map("demand_id")
+  estimatedMinutes Int?             @map("estimated_minutes")
+  status           String @default("pending")
+  decisionMade     String?          @map("decision_made")
+  notes            String?         
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  agenda   MeetingAgenda @relation(fields: [agendaId], references: [id], onDelete: Cascade)
+  report   Report?       @relation("ReportAgenda", fields: [reportId], references: [id])
+  demand   Demand?       @relation("DemandAgenda", fields: [demandId], references: [id])
+
+  @@index([agendaId, order])
+  @@map("agenda_items")
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+
+model Notification {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  type       String
+  title      String           
+  body       String?         
+  link       String?          
+  objectType String?      @map("object_type")
+  objectId   String?          @map("object_id")
+  isRead     Boolean          @default(false) @map("is_read")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  readAt     DateTime?        @map("read_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── AUDIT LOGS ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  action     String   
+  objectType String?  @map("object_type") 
+  objectId   String?  @map("object_id")
+  metadata   String?
+  ipAddress  String?  @map("ip_address") 
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
