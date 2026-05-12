@@ -39,7 +39,12 @@ export default async function ReportDetailPage({
   const canPublish = (session.user.role === 'manager' && isAuthor) || session.user.role === 'admin'
   const isDirector = session.user.role === 'director' || session.user.role === 'admin'
 
-  const sections = [
+  const sections: Array<{
+    key: string
+    label: string
+    icon: string | null
+    highlight?: string | null
+  }> = [
     { key: 'executiveSummary', label: 'Resumo Executivo', icon: null },
     { key: 'evolutions', label: 'Evoluções', icon: null },
     { key: 'criticalPoints', label: 'Pontos Críticos', icon: '🔴', highlight: 'red' },
@@ -50,7 +55,7 @@ export default async function ReportDetailPage({
     { key: 'nextSteps', label: 'Próximos Passos', icon: null },
     { key: 'pendingItems', label: 'Pendências', icon: '📋' },
     { key: 'agendaSuggestion', label: 'Sugestão de Pauta', icon: '📅' },
-  ] as const
+  ]
 
   const highlightClasses: Record<string, string> = {
     red: 'border-red-100 bg-red-50/40',

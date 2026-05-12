@@ -25,7 +25,6 @@ export default async function ReportVersionsPage({
   const versions = await prisma.reportVersion.findMany({
     where: { reportId: params.id },
     orderBy: { createdAt: 'desc' },
-    include: { savedBy: { select: { id: true, name: true } } },
   })
 
   return (
@@ -66,7 +65,7 @@ export default async function ReportVersionsPage({
                         Versão {versions.length - idx}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Salvo por {v.savedBy.name} · {formatDateTime(v.createdAt)}
+                        Salvo por {v.createdBy} · {formatDateTime(v.createdAt)}
                       </p>
                     </div>
                     {idx === 0 && (

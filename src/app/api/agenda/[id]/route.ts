@@ -26,7 +26,7 @@ const CreateAgendaSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (!isDirector(session)) return apiError('Acesso restrito', 403)
+  if (!isDirector(session.user.role)) return apiError('Acesso restrito', 403)
 
   const { searchParams } = req.nextUrl
   const page  = Math.max(1, parseInt(searchParams.get('page')  ?? '1'))
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (!isDirector(session)) return apiError('Apenas diretores podem criar pautas', 403)
+  if (!isDirector(session.user.role)) return apiError('Apenas diretores podem criar pautas', 403)
 
   const body = await req.json()
   const parsed = CreateAgendaSchema.safeParse(body)

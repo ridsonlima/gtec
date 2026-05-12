@@ -25,7 +25,11 @@ export default async function AreaDetailPage({
     prisma.area.findUnique({
       where: { id: params.areaId },
       include: {
-        responsible: { select: { id: true, name: true } },
+        userScopes: {
+          where: { isPrimary: true },
+          take: 1,
+          include: { user: { select: { id: true, name: true } } },
+        },
         _count: { select: { reports: true, demands: true, contracts: true } },
       },
     }),
@@ -72,6 +76,7 @@ export default async function AreaDetailPage({
   const overdueDemands = demands.filter((d) => d.isOverdue).length
   const publishedReports = reports.filter((r) => r.status === 'published').length
   const lastReport = reports.find((r) => r.status === 'published')
+  const responsible = area.userScopes[0]?.user
 
   const contractStatusColor: Record<string, string> = {
     active:    'text-green-600 bg-green-50',
@@ -98,9 +103,9 @@ export default async function AreaDetailPage({
           {area.description && (
             <p className="text-sm text-gray-500 mt-1 max-w-2xl">{area.description}</p>
           )}
-          {area.responsible && (
+          {responsible && (
             <p className="text-sm text-gray-500 mt-1">
-              Responsável: <span className="font-medium text-gray-700">{area.responsible.name}</span>
+              Responsável: <span className="font-medium text-gray-700">{responsible.name}</span>
             </p>
           )}
         </div>

@@ -87,8 +87,8 @@ export default async function ContractDetailPage({
             <span className="text-xs font-mono text-gray-400">{contract.number}</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900">{contract.name}</h1>
-          {contract.object && (
-            <p className="text-sm text-gray-500 mt-1 max-w-2xl">{contract.object}</p>
+          {contract.description && (
+            <p className="text-sm text-gray-500 mt-1 max-w-2xl">{contract.description}</p>
           )}
         </div>
         {isAdmin && (
@@ -112,20 +112,20 @@ export default async function ContractDetailPage({
               <p className="text-sm font-medium text-gray-800">{contract.responsible.name}</p>
             </div>
           )}
-          {contract.contractor && (
+          {contract.client && (
             <div>
               <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
                 <Briefcase className="w-3.5 h-3.5" /> Empresa
               </p>
-              <p className="text-sm font-medium text-gray-800">{contract.contractor}</p>
+              <p className="text-sm font-medium text-gray-800">{contract.client}</p>
             </div>
           )}
-          {contract.value != null && (
+          {contract.estimatedValue != null && (
             <div>
               <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
                 <DollarSign className="w-3.5 h-3.5" /> Valor
               </p>
-              <p className="text-sm font-medium text-gray-800">{formatCurrency(contract.value)}</p>
+              <p className="text-sm font-medium text-gray-800">{formatCurrency(contract.estimatedValue)}</p>
             </div>
           )}
           {contract.startDate && (
@@ -185,10 +185,10 @@ export default async function ContractDetailPage({
           )}
         </div>
 
-        {contract.notes && (
+        {contract.riskNotes && (
           <div className="mt-4 pt-4 border-t border-gray-100">
             <p className="text-xs text-gray-400 mb-1">Observações</p>
-            <p className="text-sm text-gray-700 whitespace-pre-line">{contract.notes}</p>
+            <p className="text-sm text-gray-700 whitespace-pre-line">{contract.riskNotes}</p>
           </div>
         )}
       </div>

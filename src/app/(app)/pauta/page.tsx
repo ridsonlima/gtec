@@ -24,7 +24,7 @@ export default async function PautaPage() {
   if (!session) return null
 
   // Only directors and admins can access agenda
-  if (!isDirector(session)) redirect('/dashboard')
+  if (!isDirector(session.user.role)) redirect('/dashboard')
 
   const agendas = await prisma.meetingAgenda.findMany({
     orderBy: { scheduledAt: 'desc' },

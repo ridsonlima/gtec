@@ -96,7 +96,7 @@ export default async function DashboardPage() {
     (a) => a.daysSinceLastReport === null || a.daysSinceLastReport > 7
   ).length
 
-  const statusIcon = { critical: '🔴', attention: '🟡', ok: '🟢' }
+  const statusIcon: Record<string, string> = { critical: '🔴', attention: '🟡', ok: '🟢' }
   const contractStatusLabel: Record<string, string> = { at_risk: 'Em risco', delayed: 'Com atraso' }
 
   return (

@@ -124,7 +124,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   await audit({
     userId: session.user.id,
-    action: ACTIONS.REPORT_DELETED ?? 'REPORT_DELETED',
+    action: 'report.deleted',
     objectType: 'report',
     objectId: params.id,
   })
