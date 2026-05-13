@@ -1,12 +1,14 @@
-﻿import { auth } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { canAccessArea } from '@/lib/permissions'
+import { canAccessArea, canPublishReport } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDateTime, formatFileSize, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ReportComments } from '@/components/reports/ReportComments'
-import { ChevronLeft, FileText, Paperclip, MessageSquare, Plus, Calendar } from 'lucide-react'
+import { DeleteReportButton } from '@/components/reports/DeleteReportButton'
+import { PublishReportButton } from '@/components/reports/PublishReportButton'
+import { ChevronLeft, Paperclip, MessageSquare, Plus, Calendar } from 'lucide-react'
 
 export default async function ReportDetailPage({
   params,
@@ -36,8 +38,9 @@ export default async function ReportDetailPage({
   const isDraft = report.status === 'draft'
   const isAuthor = report.authorId === session.user.id
   const canEdit = ['master', 'admin'].includes(session.user.role) || isAuthor
-  const canPublish = (session.user.role === 'manager' && isAuthor) || ['master', 'admin'].includes(session.user.role)
+  const canPublish = canPublishReport(session, report.authorId) && isDraft
   const isDirector = ['master', 'director', 'admin'].includes(session.user.role)
+  const canDelete = ['master', 'admin', 'director'].includes(session.user.role) || isAuthor
 
   const sections: Array<{
     key: string
@@ -97,7 +100,8 @@ export default async function ReportDetailPage({
                 ? ` - Publicado ${formatDateTime(report.publishedAt)}`
                 : ` - Criado ${timeAgo(report.createdAt)}`}
               {report.contract && (
-                <span className="ml-2 text-gray-400"> - <Link href={`/contratos/${report.contract.id}`} className="hover:text-blue-600">
+                <span className="ml-2 text-gray-400"> -{' '}
+                  <Link href={`/contratos/${report.contract.id}`} className="hover:text-blue-600">
                     {report.contract.number}
                   </Link>
                 </span>
@@ -105,7 +109,7 @@ export default async function ReportDetailPage({
             </p>
           </div>
 
-          {/* AÃ§Ãµes */}
+          {/* Ações */}
           <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
             {canEdit && report.status !== 'archived' && (
               <Link
@@ -114,6 +118,9 @@ export default async function ReportDetailPage({
               >
                 Editar
               </Link>
+            )}
+            {canPublish && (
+              <PublishReportButton reportId={report.id} areaId={report.areaId} />
             )}
             {isDirector && (
               <>
@@ -133,11 +140,14 @@ export default async function ReportDetailPage({
                 </Link>
               </>
             )}
+            {canDelete && (
+              <DeleteReportButton reportId={report.id} areaId={report.areaId} reportTitle={report.title} />
+            )}
           </div>
         </div>
       </div>
 
-      {/* SeÃ§Ãµes do conteÃºdo */}
+      {/* Seções do conteúdo */}
       <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
         {sections.map(({ key, label, icon, highlight }) => {
           const value = (report as any)[key] as string | null
@@ -186,7 +196,7 @@ export default async function ReportDetailPage({
         </div>
       )}
 
-      {/* Interações
+      {/* Interações */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5" />
@@ -199,7 +209,7 @@ export default async function ReportDetailPage({
         />
       </div>
 
-      {/* HistÃ³rico de versÃµes */}
+      {/* Histórico de versões */}
       {report._count.versions > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -248,4 +258,3 @@ function AttachmentRow({ attachment }: { attachment: any }) {
     </div>
   )
 }
-

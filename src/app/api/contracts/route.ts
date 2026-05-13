@@ -7,7 +7,7 @@ import { canAccessArea, getUserAreaIds } from '@/lib/permissions'
 // GET /api/contracts
 export async function GET(req: NextRequest) {
   const session = await auth()
-  if (!session) return apiError('NÃ£o autenticado', 401)
+  if (!session) return apiError('Não autenticado', 401)
 
   const { searchParams } = req.nextUrl
   const areaId = searchParams.get('areaId')
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 // POST /api/contracts â€” apenas admin
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session) return apiError('NÃ£o autenticado', 401)
+  if (!session) return apiError('Não autenticado', 401)
   if (!['master', 'admin', 'director'].includes(session.user.role)) return apiError('Sem permissao', 403)
 
   const body = await req.json()

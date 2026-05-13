@@ -1,8 +1,8 @@
-﻿import { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
-import { canAccessArea } from '@/lib/permissions'
+import { canAccessArea, canPublishReport } from '@/lib/permissions'
 import { audit, ACTIONS } from '@/lib/audit'
 import { notifyReportPublished } from '@/lib/notifications'
 
@@ -22,8 +22,8 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   if (!report) return apiError('Report não encontrado', 404)
 
-  const canEdit = report.authorId === session.user.id || ['master', 'admin'].includes(session.user.role)
-  if (!canEdit) {
+  // Usar canPublishReport: admin/master sempre pode; manager só o próprio
+  if (!canPublishReport(session, report.authorId)) {
     return apiError('Você não tem permissão para publicar este report.', 403)
   }
 
@@ -33,6 +33,10 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   if (!report.title?.trim()) {
     return apiError('Informe o título antes de publicar.', 422)
+  }
+
+  if (report.status === 'published') {
+    return apiError('Este report já está publicado.', 422)
   }
 
   const lastVersion = await prisma.reportVersion.findFirst({
@@ -63,7 +67,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     },
   })
 
-  await notifyReportPublished(updated.id, updated.title, session.user.name ?? 'Algu?m').catch(console.error)
+  await notifyReportPublished(updated.id, updated.title, session.user.name ?? 'Alguém').catch(console.error)
 
   await audit({
     userId: session.user.id,

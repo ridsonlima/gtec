@@ -1,6 +1,6 @@
-﻿'use client'
+'use client'
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Save, Send, AlertCircle } from 'lucide-react'
@@ -22,7 +22,8 @@ interface ReportFormData {
   agendaSuggestion: string
 }
 
-function ReportSection({
+// memo evita re-render de todas as seções a cada keystroke em qualquer campo
+const ReportSection = memo(function ReportSection({
   label,
   value,
   onChange,
@@ -47,7 +48,7 @@ function ReportSection({
       />
     </div>
   )
-}
+})
 
 const EMPTY: ReportFormData = {
   areaId: '', contractId: '', title: '', period: '', executiveSummary: '', evolutions: '',
@@ -78,7 +79,7 @@ export default function NovoReportPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (publish: boolean) => {
-      if (!form.title.trim()) throw new Error('T?tulo obrigat?rio')
+      if (!form.title.trim()) throw new Error('Título obrigatório')
       if (!form.areaId) throw new Error('Selecione uma área')
 
       const res = await fetch('/api/reports', {
@@ -113,10 +114,10 @@ export default function NovoReportPage() {
       {error && <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg"><AlertCircle className="w-4 h-4" />{error}</div>}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Informa??es Gerais</h2>
+        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Informações Gerais</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">?rea <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Área <span className="text-red-500">*</span></label>
             <select value={form.areaId} onChange={(e) => setForm((f) => ({ ...f, areaId: e.target.value, contractId: '' }))} className="input">
               <option value="">Selecione a área...</option>
               {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -125,23 +126,23 @@ export default function NovoReportPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Contrato (opcional)</label>
             <select value={form.contractId} onChange={set('contractId')} disabled={!form.areaId} className="input disabled:bg-gray-50 disabled:text-gray-400">
-              <option value="">Sem contrato espec?fico</option>
+              <option value="">Sem contrato específico</option>
               {contracts.map((c: any) => <option key={c.id} value={c.id}>{c.number} - {c.name}</option>)}
             </select>
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">T?tulo <span className="text-red-500">*</span></label>
-          <input type="text" value={form.title} onChange={set('title')} placeholder="Ex: Semana 19/2026 - Obras Proprias" className="input" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Título <span className="text-red-500">*</span></label>
+          <input type="text" value={form.title} onChange={set('title')} placeholder="Ex: Semana 19/2026 - Obras Próprias" className="input" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Per?odo de refer?ncia</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Período de referência</label>
           <input type="text" value={form.period} onChange={set('period')} placeholder="Ex: Semana 19/2026, Maio/2026, Q2 2026" className="input" />
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Conte?do do Report</h2>
+        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Conteúdo do Report</h2>
         <p className="text-xs text-gray-400 -mt-3">Todos os campos são opcionais. Preencha apenas o que for relevante para o período.</p>
         <ReportSection label="Resumo Executivo" value={form.executiveSummary} onChange={setText('executiveSummary')} placeholder="Resumo objetivo do período." rows={3} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -158,7 +159,7 @@ export default function NovoReportPage() {
         </div>
         <ReportSection label="Decisões Necessárias" value={form.decisionsNeeded} onChange={setText('decisionsNeeded')} placeholder="O que precisa de decisão ou autorização da diretoria?" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <ReportSection label="Pend?ncias" value={form.pendingItems} onChange={setText('pendingItems')} placeholder="Itens ainda abertos." />
+          <ReportSection label="Pendências" value={form.pendingItems} onChange={setText('pendingItems')} placeholder="Itens ainda abertos." />
           <ReportSection label="Sugestão de Pauta" value={form.agendaSuggestion} onChange={setText('agendaSuggestion')} placeholder="Tópicos para a próxima reunião." />
         </div>
       </div>

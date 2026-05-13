@@ -1,17 +1,19 @@
-﻿import { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { canAccessArea } from '@/lib/permissions'
 import { audit, ACTIONS } from '@/lib/audit'
 import { notifyReportPublished } from '@/lib/notifications'
+import { UpdateReportSchema } from '@/schemas/report.schema'
+import { ZodError } from 'zod'
 
 type Params = { params: { id: string } }
 
 // GET /api/reports/[id]
 export async function GET(_req: NextRequest, { params }: Params) {
   const session = await auth()
-  if (!session) return apiError('NÃ£o autenticado', 401)
+  if (!session) return apiError('Não autenticado', 401)
 
   const report = await prisma.report.findUnique({
     where: { id: params.id },
@@ -24,10 +26,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
     },
   })
 
-  if (!report) return apiError('RelatÃ³rio nÃ£o encontrado', 404)
+  if (!report) return apiError('Relatório não encontrado', 404)
 
   if (!canAccessArea(session, report.areaId)) {
-    return apiError('Sem acesso a este relatÃ³rio', 403)
+    return apiError('Sem acesso a este relatório', 403)
   }
 
   // Ocultar rascunhos de outros autores (exceto admin/director)
@@ -36,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     report.authorId !== session.user.id &&
     !['master', 'admin', 'director'].includes(session.user.role)
   ) {
-    return apiError('RelatÃ³rio nÃ£o encontrado', 404)
+    return apiError('Relatório não encontrado', 404)
   }
 
   return apiSuccess(report)
@@ -45,80 +47,100 @@ export async function GET(_req: NextRequest, { params }: Params) {
 // PUT /api/reports/[id]
 export async function PUT(req: NextRequest, { params }: Params) {
   const session = await auth()
-  if (!session) return apiError('NÃ£o autenticado', 401)
+  if (!session) return apiError('Não autenticado', 401)
 
   const report = await prisma.report.findUnique({ where: { id: params.id } })
-  if (!report) return apiError('RelatÃ³rio nÃ£o encontrado', 404)
+  if (!report) return apiError('Relatório não encontrado', 404)
 
   // Somente o autor ou admin pode editar
   if (report.authorId !== session.user.id && !['master', 'admin'].includes(session.user.role)) {
-    return apiError('Sem permissÃ£o para editar este relatÃ³rio', 403)
+    return apiError('Sem permissão para editar este relatório', 403)
   }
 
-  const body = await req.json()
-  const { action, ...fields } = body
+  try {
+    const body = await req.json()
+    const { action, ...rawFields } = body
 
-  // Salvar versÃ£o antes de atualizar
-  if (action === 'publish' || action === 'update') {
-    const lastVersion = await prisma.reportVersion.findFirst({
-      where: { reportId: params.id },
-      orderBy: { versionNumber: 'desc' },
-    })
-    const nextVersion = (lastVersion?.versionNumber ?? 0) + 1
+    // Validar campos com schema (previne mass-assignment)
+    const fields = UpdateReportSchema.parse(rawFields)
 
-    await prisma.reportVersion.create({
-      data: {
-        reportId: params.id,
-        versionNumber: nextVersion,
-        snapshot: JSON.stringify(report),
-        createdBy: session.user.id,
+    // Salvar versão antes de atualizar
+    if (action === 'publish' || action === 'update') {
+      const lastVersion = await prisma.reportVersion.findFirst({
+        where: { reportId: params.id },
+        orderBy: { versionNumber: 'desc' },
+      })
+      const nextVersion = (lastVersion?.versionNumber ?? 0) + 1
+
+      await prisma.reportVersion.create({
+        data: {
+          reportId: params.id,
+          versionNumber: nextVersion,
+          snapshot: JSON.stringify(report),
+          createdBy: session.user.id,
+        },
+      })
+    }
+
+    const updateData: any = { ...fields }
+
+    if (action === 'publish') {
+      updateData.status = 'published'
+      updateData.publishedAt = new Date()
+      updateData.hasCritical = !!(fields.criticalPoints?.trim())
+      updateData.hasDecisionNeeded = !!(fields.decisionsNeeded?.trim())
+    } else if (action === 'update') {
+      // Recalcular flags mesmo em atualizações de rascunho
+      if (fields.criticalPoints !== undefined) {
+        updateData.hasCritical = !!(fields.criticalPoints?.trim())
+      }
+      if (fields.decisionsNeeded !== undefined) {
+        updateData.hasDecisionNeeded = !!(fields.decisionsNeeded?.trim())
+      }
+    }
+
+    const updated = await prisma.report.update({
+      where: { id: params.id },
+      data: updateData,
+      include: {
+        area: { select: { id: true, name: true } },
+        author: { select: { id: true, name: true } },
       },
     })
+
+    if (action === 'publish') {
+      await notifyReportPublished(updated.id, updated.title, session.user.name ?? 'Alguém').catch(console.error)
+    }
+
+    await audit({
+      userId: session.user.id,
+      action: action === 'publish' ? ACTIONS.REPORT_PUBLISHED : ACTIONS.REPORT_UPDATED,
+      objectType: 'report',
+      objectId: updated.id,
+    })
+
+    return apiSuccess(updated)
+  } catch (e) {
+    if (e instanceof ZodError) return apiError('Dados inválidos', 422, e.errors)
+    console.error('[PUT /api/reports/[id]]', e)
+    return apiError('Erro interno', 500)
   }
-
-  const updateData: any = { ...fields }
-
-  if (action === 'publish') {
-    updateData.status = 'published'
-    updateData.publishedAt = new Date()
-    updateData.hasCritical = !!(fields.criticalPoints?.trim())
-    updateData.hasDecisionNeeded = !!(fields.decisionsNeeded?.trim())
-  }
-
-  const updated = await prisma.report.update({
-    where: { id: params.id },
-    data: updateData,
-    include: {
-      area: { select: { id: true, name: true } },
-      author: { select: { id: true, name: true } },
-    },
-  })
-
-  if (action === 'publish') {
-    await notifyReportPublished(updated.id, updated.title, session.user.name ?? 'Algu?m').catch(console.error)
-  }
-
-  await audit({
-    userId: session.user.id,
-    action: action === 'publish' ? ACTIONS.REPORT_PUBLISHED : ACTIONS.REPORT_UPDATED,
-    objectType: 'report',
-    objectId: updated.id,
-  })
-
-  return apiSuccess(updated)
 }
 
 // DELETE /api/reports/[id]
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await auth()
-  if (!session) return apiError('NÃ£o autenticado', 401)
-
-  if (!['master', 'admin', 'director'].includes(session.user.role)) {
-    return apiError('Sem permissÃ£o', 403)
-  }
+  if (!session) return apiError('Não autenticado', 401)
 
   const report = await prisma.report.findUnique({ where: { id: params.id } })
-  if (!report) return apiError('RelatÃ³rio nÃ£o encontrado', 404)
+  if (!report) return apiError('Relatório não encontrado', 404)
+
+  // Autor pode excluir o próprio rascunho; admin/director pode excluir qualquer um
+  const isAuthor = report.authorId === session.user.id
+  const isAdmin = ['master', 'admin', 'director'].includes(session.user.role)
+  if (!isAuthor && !isAdmin) {
+    return apiError('Sem permissão para excluir este relatório', 403)
+  }
 
   await prisma.report.delete({ where: { id: params.id } })
 
@@ -131,4 +153,3 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   return apiSuccess({ deleted: true })
 }
-
