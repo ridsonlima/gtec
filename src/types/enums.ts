@@ -4,7 +4,7 @@
  * Em produção (PostgreSQL), esses tipos são exportados diretamente do @prisma/client.
  */
 
-export type Role = 'admin' | 'director' | 'manager' | 'supervisor' | 'viewer'
+export type Role = 'master' | 'admin' | 'director' | 'manager' | 'supervisor' | 'viewer'
 export type ReportStatus = 'draft' | 'published' | 'archived'
 export type DemandStatus = 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled'
 export type DemandPriority = 'critical' | 'high' | 'medium' | 'low'

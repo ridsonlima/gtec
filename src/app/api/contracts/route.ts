@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+﻿import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
@@ -7,7 +7,7 @@ import { canAccessArea, getUserAreaIds } from '@/lib/permissions'
 // GET /api/contracts
 export async function GET(req: NextRequest) {
   const session = await auth()
-  if (!session) return apiError('Não autenticado', 401)
+  if (!session) return apiError('NÃ£o autenticado', 401)
 
   const { searchParams } = req.nextUrl
   const areaId = searchParams.get('areaId')
@@ -52,11 +52,11 @@ export async function GET(req: NextRequest) {
   return apiSuccess(contracts)
 }
 
-// POST /api/contracts — apenas admin
+// POST /api/contracts â€” apenas admin
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session) return apiError('Não autenticado', 401)
-  if (session.user.role !== 'admin') return apiError('Sem permissão', 403)
+  if (!session) return apiError('NÃ£o autenticado', 401)
+  if (!['master', 'admin', 'director'].includes(session.user.role)) return apiError('Sem permissao', 403)
 
   const body = await req.json()
   const startDate = body.startDate ? new Date(body.startDate) : new Date()
@@ -90,3 +90,4 @@ export async function POST(req: NextRequest) {
 
   return apiSuccess(contract, 201)
 }
+

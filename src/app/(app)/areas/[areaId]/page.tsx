@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+﻿import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { canAccessArea } from '@/lib/permissions'
@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import {
   FileText, AlertTriangle, Briefcase, Plus, ChevronRight,
-  Clock, CheckCircle2, AlertCircle,
+  Clock, CheckCircle2, AlertCircle, CalendarRange,
 } from 'lucide-react'
 
 export default async function AreaDetailPage({
@@ -76,9 +76,9 @@ export default async function AreaDetailPage({
     }),
   ])
 
-  const isDirector = session.user.role === 'director' || session.user.role === 'admin'
+  const isDirector = session.user.role === 'master' || session.user.role === 'director' || session.user.role === 'admin'
   const canWrite =
-    session.user.role === 'admin' ||
+    (session.user.role === 'master' || session.user.role === 'admin') ||
     session.user.areaScopes?.some((s) => s.areaId === area.id && s.canWrite)
 
   const overdueDemands = demands.filter((d) => d.isOverdue).length
@@ -98,7 +98,7 @@ export default async function AreaDetailPage({
     at_risk:   'Em risco',
     delayed:   'Atrasado',
     suspended: 'Suspenso',
-    completed: 'Concluído',
+    completed: 'ConcluÃ­do',
   }
 
   return (
@@ -106,14 +106,14 @@ export default async function AreaDetailPage({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-gray-400 mb-1">{area.isOperational ? 'Área Operacional' : 'Área de Apoio'}</p>
+          <p className="text-sm text-gray-400 mb-1">{area.isOperational ? 'Ãrea Operacional' : 'Ãrea de Apoio'}</p>
           <h1 className="text-2xl font-bold text-gray-900">{area.name}</h1>
           {area.description && (
             <p className="text-sm text-gray-500 mt-1 max-w-2xl">{area.description}</p>
           )}
           {responsible && (
             <p className="text-sm text-gray-500 mt-1">
-              Responsável: <span className="font-medium text-gray-700">{responsible.name}</span>
+              ResponsÃ¡vel: <span className="font-medium text-gray-700">{responsible.name}</span>
             </p>
           )}
         </div>
@@ -129,14 +129,22 @@ export default async function AreaDetailPage({
             </Link>
           )}
           {isDirector && (
-            <Link
-              href={`/demandas/nova?areaId=${area.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200
-                         text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Demanda
-            </Link>
+            <>
+              <Link
+                href={`/pauta?areaId=${area.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <CalendarRange className="w-4 h-4" />
+                Pautas
+              </Link>
+              <Link
+                href={`/demandas/nova?areaId=${area.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Nova Demanda
+              </Link>
+            </>
           )}
         </div>
       </div>
@@ -178,7 +186,7 @@ export default async function AreaDetailPage({
               Reports
               {lastReport && (
                 <span className="text-xs font-normal text-gray-400 normal-case ml-1">
-                  — último: {timeAgo(new Date(lastReport.createdAt))}
+                  â€” Ãºltimo: {timeAgo(new Date(lastReport.createdAt))}
                 </span>
               )}
             </h2>
@@ -189,7 +197,7 @@ export default async function AreaDetailPage({
               Nenhum report ainda.
               {canWrite && (
                 <Link href={`/reports/novo?areaId=${area.id}`} className="block mt-2 text-blue-600 hover:underline">
-                  Criar primeiro report →
+                  Criar primeiro report â†’
                 </Link>
               )}
             </div>
@@ -206,17 +214,17 @@ export default async function AreaDetailPage({
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
                       <StatusBadge status={r.status} />
                       {r.hasCritical && (
-                        <span className="text-xs text-red-600">🔴</span>
+                        <span className="text-xs text-red-600">ðŸ”´</span>
                       )}
                       {r.hasDecisionNeeded && (
-                        <span className="text-xs text-amber-600">⚡</span>
+                        <span className="text-xs text-amber-600">âš¡</span>
                       )}
                     </div>
                     <p className="text-sm font-medium text-gray-800 truncate">{r.title}</p>
                     <p className="text-xs text-gray-400">
                       {r.author.name}
-                      {r.contract && ` · ${r.contract.number}`}
-                      {' · '}{timeAgo(new Date(r.createdAt))}
+                      {r.contract && ` Â· ${r.contract.number}`}
+                      {' Â· '}{timeAgo(new Date(r.createdAt))}
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
@@ -256,7 +264,7 @@ export default async function AreaDetailPage({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         {d.isOverdue && (
-                          <span className="text-xs font-bold text-red-600">VENCIDA · </span>
+                          <span className="text-xs font-bold text-red-600">VENCIDA Â· </span>
                         )}
                         <span className="text-sm text-gray-800 font-medium line-clamp-2">{d.title}</span>
                         <div className="flex items-center gap-1.5 mt-1">
@@ -266,7 +274,7 @@ export default async function AreaDetailPage({
                       </div>
                       <div className="flex-shrink-0 text-right">
                         <p className={`text-xs font-medium ${d.isOverdue ? 'text-red-600' : 'text-gray-400'}`}>
-                          {d.dueDate ? formatDate(d.dueDate) : '—'}
+                          {d.dueDate ? formatDate(d.dueDate) : 'â€”'}
                         </p>
                       </div>
                     </div>
@@ -304,7 +312,7 @@ export default async function AreaDetailPage({
                     {c.endDate && (
                       <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Vigência até {formatDate(c.endDate)}
+                        VigÃªncia atÃ© {formatDate(c.endDate)}
                       </p>
                     )}
                   </Link>
@@ -338,3 +346,5 @@ function StatCard({
     </div>
   )
 }
+
+

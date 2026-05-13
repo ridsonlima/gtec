@@ -1,52 +1,43 @@
-import { NextRequest } from 'next/server'
+﻿import { NextRequest } from 'next/server'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
+import { canUpdateDemand } from '@/lib/permissions'
 
-/**
- * POST /api/demands/overdue
- *
- * Job agendado (Vercel Cron ou externo) que marca demandas vencidas.
- * Autenticado via header x-cron-secret.
- *
- * Vercel cron.json:
- * {
- *   "crons": [{
- *     "path": "/api/demands/overdue",
- *     "schedule": "0 1 * * *"  <- 01:00 UTC diariamente
- *   }]
- * }
- */
-export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
-    return apiError('Não autorizado', 401)
-  }
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await auth()
+  if (!session) return apiError('Nao autenticado', 401)
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const demand = await prisma.demand.findUnique({ where: { id: params.id } })
+  if (!demand) return apiError('Demanda nao encontrada', 404)
+  if (!canUpdateDemand(session, demand)) return apiError('Sem permissao', 403)
 
-  // Marca como vencidas
-  const { count: overdueCount } = await prisma.demand.updateMany({
-    where: {
-      dueDate: { lt: today },
-      status: { notIn: ['completed', 'cancelled'] },
-      isOverdue: false,
-    },
-    data: { isOverdue: true },
+  const body = await req.json()
+  const update = await prisma.$transaction(async (tx) => {
+    const created = await tx.demandUpdate.create({
+      data: {
+        demandId: demand.id,
+        authorId: session.user.id,
+        content: body.content || '',
+        statusBefore: demand.status,
+        statusAfter: body.statusAfter || null,
+      },
+      include: { author: { select: { id: true, name: true } } },
+    })
+
+    if (body.statusAfter && body.statusAfter !== demand.status) {
+      await tx.demand.update({
+        where: { id: demand.id },
+        data: {
+          status: body.statusAfter,
+          completedAt: body.statusAfter === 'completed' ? new Date() : null,
+          isOverdue: body.statusAfter === 'completed' || body.statusAfter === 'cancelled' ? false : demand.isOverdue,
+        },
+      })
+    }
+
+    return created
   })
 
-  // Desmarca vencidas que foram concluídas/canceladas
-  const { count: resolvedCount } = await prisma.demand.updateMany({
-    where: {
-      status: { in: ['completed', 'cancelled'] },
-      isOverdue: true,
-    },
-    data: { isOverdue: false },
-  })
-
-  console.log(
-    `[CRON] demands/overdue: ${overdueCount} marcadas, ${resolvedCount} desmarcadas`
-  )
-
-  return apiSuccess({ overdueCount, resolvedCount })
+  return apiSuccess(update, 201)
 }

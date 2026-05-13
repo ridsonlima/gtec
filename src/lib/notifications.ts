@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+﻿import { prisma } from './prisma'
 import type { NotificationType, ObjectType } from '@/types/enums'
 
 interface CreateNotificationInput {
@@ -22,7 +22,7 @@ export async function createNotificationBatch(
   return prisma.notification.createMany({ data: inputs })
 }
 
-// ─── NOTIFICAÇÕES ESPECÍFICAS ─────────────────────────────────────────────────
+// â”€â”€â”€ NOTIFICAÃ‡Ã•ES ESPECÃFICAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function notifyReportPublished(
   reportId: string,
@@ -30,7 +30,7 @@ export async function notifyReportPublished(
   authorName: string
 ) {
   const directors = await prisma.user.findMany({
-    where: { role: { in: ['director', 'admin'] }, isActive: true },
+    where: { role: { in: ['master', 'director', 'admin'] }, isActive: true },
     select: { id: true },
   })
 
@@ -56,7 +56,7 @@ export async function notifyDemandAssigned(
   await createNotification({
     userId: responsibleId,
     type: 'demand_assigned',
-    title: 'Nova demanda atribuída a você',
+    title: 'Nova demanda atribuÃ­da a vocÃª',
     body: `${assignedByName} atribuiu: ${demandTitle}`,
     link: `/demandas/${demandId}`,
     objectType: 'demand',
@@ -85,7 +85,7 @@ export async function notifyComment(
     notifyUserIds.map((userId) => ({
       userId,
       type: 'comment' as NotificationType,
-      title: `Novo comentário de ${authorName}`,
+      title: `Novo comentÃ¡rio de ${authorName}`,
       body: preview,
       link: linkMap[objectType],
       objectType,
@@ -109,7 +109,7 @@ export async function notifyFollowUp(
   await createNotification({
     userId: targetUserId,
     type: 'follow_up',
-    title: `Cobrança de ${fromName}`,
+    title: `CobranÃ§a de ${fromName}`,
     body: content.slice(0, 100),
     link: linkMap[objectType],
     objectType,
@@ -132,7 +132,7 @@ export async function notifyEvidenceRequested(
   await createNotification({
     userId: responsibleId,
     type: 'evidence_requested',
-    title: 'Evidência solicitada',
+    title: 'EvidÃªncia solicitada',
     body: `${requestedByName} solicitou: ${description.slice(0, 80)}`,
     link: linkMap[objectType],
     objectType,
@@ -154,10 +154,11 @@ export async function notifyEvidenceReceived(
   await createNotification({
     userId: requestedById,
     type: 'evidence_received',
-    title: 'Evidência recebida',
-    body: `${responsibleName} enviou a evidência solicitada`,
+    title: 'EvidÃªncia recebida',
+    body: `${responsibleName} enviou a evidÃªncia solicitada`,
     link: linkMap[objectType],
     objectType,
     objectId,
   })
 }
+

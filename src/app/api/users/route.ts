@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       ? {
           isActive: true,
           OR: [
-            { role: { in: ['admin', 'director'] } },
+            { role: { in: ['master', 'admin', 'director'] } },
             { areaScopes: { some: { areaId } } },
           ],
         }
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return apiError('Nao autenticado', 401)
-  if (!['admin', 'director'].includes(session.user.role)) return apiError('Sem permissao', 403)
+  if (!['master', 'admin', 'director'].includes(session.user.role)) return apiError('Sem permissao', 403)
 
   const body = await req.json()
   if (!body.name || !body.email || !body.password || !body.role) {

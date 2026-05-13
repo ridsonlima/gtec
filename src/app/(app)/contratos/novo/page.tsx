@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, Save } from 'lucide-react'
@@ -10,10 +10,12 @@ const CONTRACT_TYPES = ['Empreitada global', 'Preco unitario', 'Manutencao', 'Se
 
 export default function NewContractPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const preAreaId = searchParams.get('areaId') ?? ''
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
-    areaId: '', responsibleId: '', number: '', name: '', client: '', contractType: '', object: '',
+    areaId: preAreaId, responsibleId: '', number: '', name: '', client: '', contractType: '', object: '',
     estimatedValue: '', executionDays: '', startDate: new Date().toISOString().slice(0, 10), status: 'active',
   })
 
@@ -77,3 +79,5 @@ export default function NewContractPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-sm font-medium text-gray-700 space-y-1"><span>{label}</span>{children}</label>
 }
+
+

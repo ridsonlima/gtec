@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+﻿import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { canAccessArea } from '@/lib/permissions'
@@ -35,9 +35,9 @@ export default async function ReportDetailPage({
 
   const isDraft = report.status === 'draft'
   const isAuthor = report.authorId === session.user.id
-  const canEdit = session.user.role === 'admin' || isAuthor
-  const canPublish = (session.user.role === 'manager' && isAuthor) || session.user.role === 'admin'
-  const isDirector = session.user.role === 'director' || session.user.role === 'admin'
+  const canEdit = ['master', 'admin'].includes(session.user.role) || isAuthor
+  const canPublish = (session.user.role === 'manager' && isAuthor) || ['master', 'admin'].includes(session.user.role)
+  const isDirector = ['master', 'director', 'admin'].includes(session.user.role)
 
   const sections: Array<{
     key: string
@@ -46,15 +46,15 @@ export default async function ReportDetailPage({
     highlight?: string | null
   }> = [
     { key: 'executiveSummary', label: 'Resumo Executivo', icon: null },
-    { key: 'evolutions', label: 'Evoluções', icon: null },
-    { key: 'criticalPoints', label: 'Pontos Críticos', icon: '🔴', highlight: 'red' },
-    { key: 'attentionPoints', label: 'Pontos de Atenção', icon: '🟡', highlight: 'amber' },
-    { key: 'risks', label: 'Riscos', icon: '⛔', highlight: null },
-    { key: 'blockers', label: 'Bloqueios', icon: '🚧', highlight: null },
-    { key: 'decisionsNeeded', label: 'Decisões Necessárias', icon: '⚡', highlight: 'blue' },
-    { key: 'nextSteps', label: 'Próximos Passos', icon: null },
-    { key: 'pendingItems', label: 'Pendências', icon: '📋' },
-    { key: 'agendaSuggestion', label: 'Sugestão de Pauta', icon: '📅' },
+    { key: 'evolutions', label: 'EvoluÃ§Ãµes', icon: null },
+    { key: 'criticalPoints', label: 'Pontos CrÃ­ticos', icon: 'ðŸ”´', highlight: 'red' },
+    { key: 'attentionPoints', label: 'Pontos de AtenÃ§Ã£o', icon: 'ðŸŸ¡', highlight: 'amber' },
+    { key: 'risks', label: 'Riscos', icon: 'â›”', highlight: null },
+    { key: 'blockers', label: 'Bloqueios', icon: 'ðŸš§', highlight: null },
+    { key: 'decisionsNeeded', label: 'DecisÃµes NecessÃ¡rias', icon: 'âš¡', highlight: 'blue' },
+    { key: 'nextSteps', label: 'PrÃ³ximos Passos', icon: null },
+    { key: 'pendingItems', label: 'PendÃªncias', icon: 'ðŸ“‹' },
+    { key: 'agendaSuggestion', label: 'SugestÃ£o de Pauta', icon: 'ðŸ“…' },
   ]
 
   const highlightClasses: Record<string, string> = {
@@ -81,12 +81,12 @@ export default async function ReportDetailPage({
               <StatusBadge status={report.status} />
               {report.hasCritical && (
                 <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                  🔴 Ponto crítico
+                  ðŸ”´ Ponto crÃ­tico
                 </span>
               )}
               {report.hasDecisionNeeded && (
                 <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                  ⚡ Decisão necessária
+                  âš¡ DecisÃ£o necessÃ¡ria
                 </span>
               )}
             </div>
@@ -94,11 +94,11 @@ export default async function ReportDetailPage({
             <p className="text-sm text-gray-500 mt-1">
               Por {report.author.name}
               {report.publishedAt
-                ? ` · Publicado ${formatDateTime(report.publishedAt)}`
-                : ` · Criado ${timeAgo(report.createdAt)}`}
+                ? ` Â· Publicado ${formatDateTime(report.publishedAt)}`
+                : ` Â· Criado ${timeAgo(report.createdAt)}`}
               {report.contract && (
                 <span className="ml-2 text-gray-400">
-                  · <Link href={`/contratos/${report.contract.id}`} className="hover:text-blue-600">
+                  Â· <Link href={`/contratos/${report.contract.id}`} className="hover:text-blue-600">
                     {report.contract.number}
                   </Link>
                 </span>
@@ -106,7 +106,7 @@ export default async function ReportDetailPage({
             </p>
           </div>
 
-          {/* Ações */}
+          {/* AÃ§Ãµes */}
           <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
             {canEdit && report.status !== 'archived' && (
               <Link
@@ -130,7 +130,7 @@ export default async function ReportDetailPage({
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  Adicionar à Pauta
+                  Adicionar Ã  Pauta
                 </Link>
               </>
             )}
@@ -138,7 +138,7 @@ export default async function ReportDetailPage({
         </div>
       </div>
 
-      {/* Seções do conteúdo */}
+      {/* SeÃ§Ãµes do conteÃºdo */}
       <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
         {sections.map(({ key, label, icon, highlight }) => {
           const value = (report as any)[key] as string | null
@@ -162,7 +162,7 @@ export default async function ReportDetailPage({
         {/* Mensagem se report vazio */}
         {sections.every(({ key }) => !(report as any)[key]?.trim()) && (
           <div className="px-6 py-8 text-center text-gray-400 text-sm">
-            Report sem conteúdo ainda.
+            Report sem conteÃºdo ainda.
             {canEdit && (
               <Link href={`/reports/${report.id}/editar`} className="ml-2 text-blue-600 hover:underline">
                 Preencher
@@ -187,11 +187,11 @@ export default async function ReportDetailPage({
         </div>
       )}
 
-      {/* Interações / comentários */}
+      {/* InteraÃ§Ãµes / comentÃ¡rios */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5" />
-          Interações
+          InteraÃ§Ãµes
         </h3>
         <ReportComments
           reportId={report.id}
@@ -200,17 +200,17 @@ export default async function ReportDetailPage({
         />
       </div>
 
-      {/* Histórico de versões */}
+      {/* HistÃ³rico de versÃµes */}
       {report._count.versions > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Histórico de Versões ({report._count.versions})
+            HistÃ³rico de VersÃµes ({report._count.versions})
           </h3>
           <Link
             href={`/reports/${report.id}/versoes`}
             className="text-sm text-blue-600 hover:underline"
           >
-            Ver versões anteriores →
+            Ver versÃµes anteriores â†’
           </Link>
         </div>
       )}
@@ -220,14 +220,14 @@ export default async function ReportDetailPage({
 
 function AttachmentRow({ attachment }: { attachment: any }) {
   const icons: Record<string, string> = {
-    'application/pdf': '📄',
-    'image/jpeg': '🖼',
-    'image/png': '🖼',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '📊',
-    'application/vnd.ms-excel': '📊',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📝',
+    'application/pdf': 'ðŸ“„',
+    'image/jpeg': 'ðŸ–¼',
+    'image/png': 'ðŸ–¼',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'ðŸ“Š',
+    'application/vnd.ms-excel': 'ðŸ“Š',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'ðŸ“',
   }
-  const icon = icons[attachment.mimeType] ?? '📎'
+  const icon = icons[attachment.mimeType] ?? 'ðŸ“Ž'
 
   return (
     <div className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
@@ -235,7 +235,7 @@ function AttachmentRow({ attachment }: { attachment: any }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm text-gray-700 truncate">{attachment.originalName}</p>
         <p className="text-xs text-gray-400">
-          {formatFileSize(attachment.sizeBytes)} · {attachment.uploadedBy.name} · {timeAgo(attachment.createdAt)}
+          {formatFileSize(attachment.sizeBytes)} Â· {attachment.uploadedBy.name} Â· {timeAgo(attachment.createdAt)}
         </p>
       </div>
       <a
@@ -249,3 +249,4 @@ function AttachmentRow({ attachment }: { attachment: any }) {
     </div>
   )
 }
+

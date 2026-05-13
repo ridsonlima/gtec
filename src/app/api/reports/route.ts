@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+﻿import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
@@ -11,7 +11,7 @@ import { ZodError } from 'zod'
 // GET /api/reports
 export async function GET(req: NextRequest) {
   const session = await auth()
-  if (!session) return apiError('Não autenticado', 401)
+  if (!session) return apiError('NÃ£o autenticado', 401)
 
   const { searchParams } = req.nextUrl
   const areaId = searchParams.get('areaId')
@@ -24,15 +24,15 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, parseInt(searchParams.get('limit') ?? '20'))
   const skip = (page - 1) * limit
 
-  // Controle de acesso: director/admin vê tudo, outros veem apenas sua área
+  // Controle de acesso: director/admin vÃª tudo, outros veem apenas sua Ã¡rea
   const allowedAreaIds = getUserAreaIds(session)
 
   const where: any = {}
 
-  // Filtro por área
+  // Filtro por Ã¡rea
   if (areaId) {
     if (!canAccessArea(session, areaId)) {
-      return apiError('Sem acesso a esta área', 403)
+      return apiError('Sem acesso a esta Ã¡rea', 403)
     }
     where.areaId = areaId
   } else if (allowedAreaIds) {
@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
     ]
   }
 
-  // Não mostra rascunhos para quem não é o autor (exceto admin)
-  if (session.user.role !== 'admin' && session.user.role !== 'director') {
+  // NÃ£o mostra rascunhos para quem nÃ£o Ã© o autor (exceto admin)
+  if (!['master', 'admin', 'director'].includes(session.user.role)) {
     where.OR = [
       { status: { not: 'draft' } },
       { authorId: session.user.id },
@@ -94,20 +94,20 @@ export async function GET(req: NextRequest) {
 // POST /api/reports
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session) return apiError('Não autenticado', 401)
+  if (!session) return apiError('NÃ£o autenticado', 401)
 
   // Apenas managers e supervisores criam reports
   if (!['manager', 'supervisor', 'admin'].includes(session.user.role)) {
-    return apiError('Sem permissão para criar reports', 403)
+    return apiError('Sem permissÃ£o para criar reports', 403)
   }
 
   try {
     const body = await req.json()
     const data = CreateReportSchema.parse(body)
 
-    // Verifica escopo de escrita na área
-    if (!canAccessArea(session, data.areaId, true) && session.user.role !== 'admin') {
-      return apiError('Sem permissão de escrita nesta área', 403)
+    // Verifica escopo de escrita na Ã¡rea
+    if (!canAccessArea(session, data.areaId, true) && !['master', 'admin'].includes(session.user.role)) {
+      return apiError('Sem permissÃ£o de escrita nesta Ã¡rea', 403)
     }
 
     const report = await prisma.report.create({
@@ -146,8 +146,9 @@ export async function POST(req: NextRequest) {
 
     return apiSuccess(report, 201)
   } catch (e) {
-    if (e instanceof ZodError) return apiError('Dados inválidos', 422, e.errors)
+    if (e instanceof ZodError) return apiError('Dados invÃ¡lidos', 422, e.errors)
     console.error('[POST /api/reports]', e)
     return apiError('Erro interno', 500)
   }
 }
+

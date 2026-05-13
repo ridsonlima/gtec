@@ -49,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role as Role,
+          role: (user.email === 'ridsonlima@gmail.com' ? 'master' : user.role) as Role,
           areaScopes: user.areaScopes.map((s) => ({
             areaId: s.areaId,
             areaName: s.area.name,

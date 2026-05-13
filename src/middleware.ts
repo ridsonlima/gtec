@@ -21,14 +21,14 @@ export default auth((req) => {
   // Rotas de admin → apenas role=admin
   const adminPaths = ['/admin', '/api/users']
   if (adminPaths.some((p) => pathname.startsWith(p))) {
-    if (!['admin', 'director'].includes(session.user.role)) {
+    if (!['master', 'admin', 'director'].includes(session.user.role)) {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
   }
 
   // Pauta → apenas director e admin
   if (pathname.startsWith('/pauta') && pathname.includes('/nova')) {
-    if (!['director', 'admin'].includes(session.user.role)) {
+    if (!['master', 'director', 'admin'].includes(session.user.role)) {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
   }

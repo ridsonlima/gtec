@@ -46,7 +46,7 @@ export default async function ContractsPage() {
         </h1>
         <p className="text-sm text-gray-500 mt-1">Visao consolidada dos contratos por area.</p>
         </div>
-        {['admin', 'director'].includes(session.user.role) && (
+        {['master', 'admin', 'director'].includes(session.user.role) && (
           <Link href="/contratos/novo" className="inline-flex items-center gap-2 px-3 py-2 bg-cdg-blue text-white text-sm font-medium rounded-lg hover:opacity-90">
             <Plus className="w-4 h-4" /> Novo contrato
           </Link>
@@ -91,3 +91,4 @@ export default async function ContractsPage() {
     </div>
   )
 }
+

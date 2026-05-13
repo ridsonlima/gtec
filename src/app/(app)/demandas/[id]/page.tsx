@@ -7,6 +7,7 @@ import { formatDate, formatDateTime, formatFileSize, timeAgo } from '@/lib/utils
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { DemandActions } from '@/components/demands/DemandActions'
+import { DemandUpdateActions } from '@/components/demands/DemandUpdateActions'
 import {
   ChevronLeft, Paperclip, MessageSquare, Clock,
   User, Briefcase, FileText, Calendar,
@@ -54,6 +55,7 @@ export default async function DemandDetailPage({
   if (!canAccessArea(session, demand.areaId)) notFound()
 
   const canEdit =
+    session.user.role === 'master' ||
     session.user.role === 'admin' ||
     session.user.role === 'director' ||
     demand.responsibleId === session.user.id
@@ -79,7 +81,7 @@ export default async function DemandDetailPage({
     <div className="max-w-4xl space-y-5">
       {/* Breadcrumb */}
       <Link
-        href="/demandas"
+        href={`/areas/${demand.areaId}`}
         className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -172,6 +174,9 @@ export default async function DemandDetailPage({
                     {u.content && (
                       <p className="text-sm text-gray-700 whitespace-pre-line">{u.content}</p>
                     )}
+                    {(u.author.id === session.user.id && !['completed', 'cancelled'].includes(demand.status)) || ['master', 'admin', 'director'].includes(session.user.role) ? (
+                      <DemandUpdateActions updateId={u.id} initialContent={u.content ?? ''} />
+                    ) : null}
                   </div>
                 </div>
               ))}

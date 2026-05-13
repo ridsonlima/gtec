@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+﻿import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { canAccessArea } from '@/lib/permissions'
@@ -15,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   at_risk:   'Em risco',
   delayed:   'Atrasado',
   suspended: 'Suspenso',
-  completed: 'Concluído',
+  completed: 'ConcluÃ­do',
 }
 const STATUS_COLORS: Record<string, string> = {
   active:    'text-green-700 bg-green-50 border-green-200',
@@ -56,10 +56,10 @@ export default async function ContractDetailPage({
   if (!contract) notFound()
   if (!canAccessArea(session, contract.areaId)) notFound()
 
-  const isAdmin = session.user.role === 'admin'
+  const isAdmin = ['master', 'admin', 'director'].includes(session.user.role)
 
   const formatCurrency = (val: number | null) =>
-    val == null ? '—' : val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    val == null ? 'â€”' : val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const daysRemaining = contract.endDate
     ? Math.ceil((new Date(contract.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -107,7 +107,7 @@ export default async function ContractDetailPage({
           {contract.responsible && (
             <div>
               <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
-                <User className="w-3.5 h-3.5" /> Responsável
+                <User className="w-3.5 h-3.5" /> ResponsÃ¡vel
               </p>
               <p className="text-sm font-medium text-gray-800">{contract.responsible.name}</p>
             </div>
@@ -131,7 +131,7 @@ export default async function ContractDetailPage({
           {contract.startDate && (
             <div>
               <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
-                <Calendar className="w-3.5 h-3.5" /> Início
+                <Calendar className="w-3.5 h-3.5" /> InÃ­cio
               </p>
               <p className="text-sm font-medium text-gray-800">{formatDate(contract.startDate)}</p>
             </div>
@@ -139,7 +139,7 @@ export default async function ContractDetailPage({
           {contract.endDate && (
             <div>
               <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
-                <Calendar className="w-3.5 h-3.5" /> Término
+                <Calendar className="w-3.5 h-3.5" /> TÃ©rmino
               </p>
               <p className={`text-sm font-medium ${daysRemaining != null && daysRemaining < 30 ? 'text-amber-600' : 'text-gray-800'}`}>
                 {formatDate(contract.endDate)}
@@ -153,7 +153,7 @@ export default async function ContractDetailPage({
           )}
           {contract.physicalProgress != null && (
             <div>
-              <p className="text-xs text-gray-400 mb-0.5">Avanço físico</p>
+              <p className="text-xs text-gray-400 mb-0.5">AvanÃ§o fÃ­sico</p>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
@@ -169,7 +169,7 @@ export default async function ContractDetailPage({
           )}
           {contract.financialProgress != null && (
             <div>
-              <p className="text-xs text-gray-400 mb-0.5">Avanço financeiro</p>
+              <p className="text-xs text-gray-400 mb-0.5">AvanÃ§o financeiro</p>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
@@ -187,7 +187,7 @@ export default async function ContractDetailPage({
 
         {contract.riskNotes && (
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 mb-1">Observações</p>
+            <p className="text-xs text-gray-400 mb-1">ObservaÃ§Ãµes</p>
             <p className="text-sm text-gray-700 whitespace-pre-line">{contract.riskNotes}</p>
           </div>
         )}
@@ -225,7 +225,7 @@ export default async function ContractDetailPage({
                       <StatusBadge status={r.status} />
                     </div>
                     <p className="text-sm font-medium text-gray-800 truncate">{r.title}</p>
-                    <p className="text-xs text-gray-400">{r.author.name} · {timeAgo(new Date(r.createdAt))}</p>
+                    <p className="text-xs text-gray-400">{r.author.name} Â· {timeAgo(new Date(r.createdAt))}</p>
                   </div>
                 </Link>
               ))}
@@ -253,12 +253,12 @@ export default async function ContractDetailPage({
                   className="block bg-white rounded-xl border border-gray-100 px-3 py-2.5 hover:shadow-sm transition-shadow"
                 >
                   {d.isOverdue && (
-                    <span className="text-xs font-bold text-red-600">VENCIDA · </span>
+                    <span className="text-xs font-bold text-red-600">VENCIDA Â· </span>
                   )}
                   <p className="text-sm text-gray-800 font-medium line-clamp-2">{d.title}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {d.responsible?.name}
-                    {d.dueDate ? ` · ${formatDate(d.dueDate)}` : ''}
+                    {d.dueDate ? ` Â· ${formatDate(d.dueDate)}` : ''}
                   </p>
                 </Link>
               ))}
@@ -269,3 +269,4 @@ export default async function ContractDetailPage({
     </div>
   )
 }
+

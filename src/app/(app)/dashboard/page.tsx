@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+﻿import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { subDays } from 'date-fns'
@@ -12,8 +12,8 @@ export default async function DashboardPage() {
   if (!session) redirect('/login')
 
   // Apenas director e admin acessam o dashboard executivo
-  if (!['director', 'admin'].includes(session.user.role)) {
-    // Gestores são redirecionados para sua área primária
+  if (!['master', 'director', 'admin'].includes(session.user.role)) {
+    // Gestores sÃ£o redirecionados para sua Ã¡rea primÃ¡ria
     const primary = session.user.areaScopes.find((s) => s.isPrimary)
     if (primary) redirect(`/areas/${primary.areaId}`)
     redirect('/demandas')
@@ -31,6 +31,7 @@ export default async function DashboardPage() {
     criticalDemands,
     contractsAtRisk,
     decisionsNeeded,
+    recentComments,
   ] = await Promise.all([
     prisma.demand.count({
       where: { isOverdue: true, status: { notIn: ['completed', 'cancelled'] } },
@@ -76,6 +77,11 @@ export default async function DashboardPage() {
       take: 4,
       include: { area: { select: { name: true } } },
     }),
+    prisma.comment.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: { author: { select: { name: true } } },
+    }),
   ])
 
   const areaStatus = areas.map((area) => {
@@ -96,12 +102,12 @@ export default async function DashboardPage() {
     (a) => a.daysSinceLastReport === null || a.daysSinceLastReport > 7
   ).length
 
-  const statusIcon: Record<string, string> = { critical: '🔴', attention: '🟡', ok: '🟢' }
+  const statusIcon: Record<string, string> = { critical: 'ðŸ”´', attention: 'ðŸŸ¡', ok: 'ðŸŸ¢' }
   const contractStatusLabel: Record<string, string> = { at_risk: 'Em risco', delayed: 'Com atraso' }
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
+      {/* CabeÃ§alho */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">Dashboard Executivo</h1>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -118,13 +124,13 @@ export default async function DashboardPage() {
           href="/demandas?isOverdue=true"
         />
         <AlertCard
-          label="Evidências Pendentes"
+          label="EvidÃªncias Pendentes"
           value={pendingEvidence}
           color={pendingEvidence > 0 ? 'red' : 'green'}
           href="/evidencias"
         />
         <AlertCard
-          label="Áreas sem Update"
+          label="Ãreas sem Update"
           value={inactiveAreas}
           subtitle="> 7 dias"
           color={inactiveAreas > 0 ? 'amber' : 'green'}
@@ -132,15 +138,15 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Status por área */}
+      {/* Status por Ã¡rea */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Status por Área</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Status por Ãrea</h2>
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Área</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 hidden sm:table-cell">Último Report</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Ãrea</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 hidden sm:table-cell">Ãšltimo Report</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 hidden md:table-cell">Demandas</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Status</th>
               </tr>
@@ -156,7 +162,7 @@ export default async function DashboardPage() {
                   <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
                     {area.lastReportDate
                       ? <span className={area.daysSinceLastReport! > 7 ? 'text-amber-600 font-medium' : ''}>
-                          há {area.daysSinceLastReport} dias
+                          hÃ¡ {area.daysSinceLastReport} dias
                         </span>
                       : <span className="text-red-500">Nunca</span>}
                   </td>
@@ -177,15 +183,15 @@ export default async function DashboardPage() {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Demandas críticas */}
+        {/* Demandas crÃ­ticas */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Demandas Críticas</h2>
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Demandas CrÃ­ticas</h2>
             <Link href="/demandas" className="text-xs text-blue-600 hover:underline">Ver todas</Link>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
             {criticalDemands.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-gray-400 text-center">Nenhuma demanda crítica 🎉</p>
+              <p className="px-4 py-6 text-sm text-gray-400 text-center">Nenhuma demanda crÃ­tica ðŸŽ‰</p>
             ) : criticalDemands.map((d) => (
               <Link key={d.id} href={`/demandas/${d.id}`}
                 className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
@@ -211,17 +217,17 @@ export default async function DashboardPage() {
           {contractsAtRisk.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Contratos em Atenção</h2>
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Contratos em AtenÃ§Ã£o</h2>
                 <Link href="/contratos" className="text-xs text-blue-600 hover:underline">Ver todos</Link>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
                 {contractsAtRisk.map((c) => (
                   <Link key={c.id} href={`/contratos/${c.id}`}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                    <span className="text-base">{c.status === 'at_risk' ? '🔴' : '🟡'}</span>
+                    <span className="text-base">{c.status === 'at_risk' ? 'ðŸ”´' : 'ðŸŸ¡'}</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-800 truncate">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.number} · {c.area.name}</p>
+                      <p className="text-xs text-gray-500">{c.number} Â· {c.area.name}</p>
                     </div>
                     <span className="text-xs text-gray-500 flex-shrink-0">
                       {contractStatusLabel[c.status] ?? c.status}
@@ -232,11 +238,29 @@ export default async function DashboardPage() {
             </section>
           )}
 
-          {/* Decisões necessárias */}
+          {recentComments.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Interacoes recentes</h2>
+              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
+                {recentComments.map((c) => (
+                  <Link key={c.id} href={`/${c.objectType === 'demand' ? 'demandas' : c.objectType === 'report' ? 'reports' : c.objectType === 'contract' ? 'contratos' : 'dashboard'}/${c.objectId}`}
+                    className="block px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-500">{c.author.name}</span>
+                      <span className="text-xs text-gray-400">{timeAgo(c.createdAt)}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 line-clamp-2">{c.content}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* DecisÃµes necessÃ¡rias */}
           {decisionsNeeded.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                Aguardando Decisão
+                Aguardando DecisÃ£o
               </h2>
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
                 {decisionsNeeded.map((r) => (
@@ -244,7 +268,7 @@ export default async function DashboardPage() {
                     className="block px-4 py-3 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                        Decisão necessária
+                        DecisÃ£o necessÃ¡ria
                       </span>
                       <span className="text-xs text-gray-400">{r.area.name}</span>
                     </div>
@@ -285,3 +309,4 @@ function AlertCard({
     </Link>
   )
 }
+
