@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+﻿import { prisma } from './prisma'
 import { headers } from 'next/headers'
 
 interface AuditInput {
@@ -23,17 +23,17 @@ export async function audit(input: AuditInput): Promise<void> {
         action: input.action,
         objectType: input.objectType,
         objectId: input.objectId,
-        metadata: input.metadata ?? undefined,
+        metadata: input.metadata ? JSON.stringify(input.metadata) : undefined,
         ipAddress: ip.split(',')[0].trim(), // pega o primeiro IP em caso de proxy
       },
     })
   } catch (err) {
-    // Nunca deixar falha de auditoria quebrar a operação principal
+    // Nunca deixar falha de auditoria quebrar a operaÃ§Ã£o principal
     console.error('[AUDIT] Falha ao registrar:', err)
   }
 }
 
-// Ações pré-definidas para consistência
+// AÃ§Ãµes prÃ©-definidas para consistÃªncia
 export const ACTIONS = {
   USER_LOGIN: 'user.login',
   USER_LOGOUT: 'user.logout',
@@ -58,3 +58,4 @@ export const ACTIONS = {
   AGENDA_CREATED: 'agenda.created',
   AGENDA_UPDATED: 'agenda.updated',
 } as const
+

@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth'
+﻿import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
@@ -49,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: user.role as Role,
           areaScopes: user.areaScopes.map((s) => ({
             areaId: s.areaId,
             areaName: s.area.name,
@@ -87,3 +87,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 8 * 60 * 60, // 8 horas
   },
 })
+
