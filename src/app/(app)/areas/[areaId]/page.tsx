@@ -19,11 +19,17 @@ export default async function AreaDetailPage({
   const session = await auth()
   if (!session) return null
 
-  if (!canAccessArea(session, params.areaId)) notFound()
+  const areaSlugMap: Record<string, string> = {
+    planejamento: 'PLAN',
+    'obras-proprias': 'OBRAS_PROP',
+    'obras-terceirizadas': 'OBRAS_TERC',
+    sesmt: 'SESMT',
+    equipamentos: 'EQUIP',
+  }
 
-  const [area, reports, demands, contracts] = await Promise.all([
-    prisma.area.findUnique({
-      where: { id: params.areaId },
+  const areaCode = areaSlugMap[params.areaId]
+  const area = await prisma.area.findFirst({
+      where: areaCode ? { code: areaCode } : { id: params.areaId },
       include: {
         userScopes: {
           where: { isPrimary: true },
@@ -32,10 +38,14 @@ export default async function AreaDetailPage({
         },
         _count: { select: { reports: true, demands: true, contracts: true } },
       },
-    }),
+    })
 
+  if (!area) notFound()
+  if (!canAccessArea(session, area.id)) notFound()
+
+  const [reports, demands, contracts] = await Promise.all([
     prisma.report.findMany({
-      where: { areaId: params.areaId },
+      where: { areaId: area.id },
       orderBy: { createdAt: 'desc' },
       take: 10,
       include: {
@@ -46,7 +56,7 @@ export default async function AreaDetailPage({
 
     prisma.demand.findMany({
       where: {
-        areaId: params.areaId,
+        areaId: area.id,
         status: { notIn: ['completed', 'cancelled'] },
       },
       orderBy: [{ isOverdue: 'desc' }, { priority: 'asc' }, { dueDate: 'asc' }],
@@ -57,7 +67,7 @@ export default async function AreaDetailPage({
     }),
 
     prisma.contract.findMany({
-      where: { areaId: params.areaId, status: { not: 'completed' } },
+      where: { areaId: area.id, status: { not: 'completed' } },
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: {
@@ -66,12 +76,10 @@ export default async function AreaDetailPage({
     }),
   ])
 
-  if (!area) notFound()
-
   const isDirector = session.user.role === 'director' || session.user.role === 'admin'
   const canWrite =
     session.user.role === 'admin' ||
-    session.user.areaScopes?.some((s) => s.areaId === params.areaId && s.canWrite)
+    session.user.areaScopes?.some((s) => s.areaId === area.id && s.canWrite)
 
   const overdueDemands = demands.filter((d) => d.isOverdue).length
   const publishedReports = reports.filter((r) => r.status === 'published').length
