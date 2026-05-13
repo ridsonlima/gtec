@@ -21,6 +21,33 @@ interface ReportFormData {
   agendaSuggestion: string
 }
 
+function ReportSection({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 4,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  rows?: number
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-300"
+      />
+    </div>
+  )
+}
+
 export default function EditarReportPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -54,9 +81,10 @@ export default function EditarReportPage() {
     }
   }, [data])
 
-  const set = (key: keyof ReportFormData) =>
-    (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
-      setForm((f) => f ? { ...f, [key]: e.target.value } : f)
+  const set = (key: keyof ReportFormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => f ? { ...f, [key]: e.target.value } : f)
+  const setText = (key: keyof ReportFormData) => (value: string) =>
+    setForm((f) => f ? { ...f, [key]: value } : f)
 
   const saveMutation = useMutation({
     mutationFn: async (publish: boolean) => {
@@ -87,29 +115,6 @@ export default function EditarReportPage() {
       </div>
     )
   }
-
-  const Section = ({
-    label, field, placeholder, icon, rows = 4,
-  }: {
-    label: string; field: keyof ReportFormData
-    placeholder: string; icon?: string; rows?: number
-  }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {icon && <span className="mr-1">{icon}</span>}
-        {label}
-      </label>
-      <textarea
-        rows={rows}
-        value={form[field]}
-        onChange={set(field)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-y
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                   placeholder:text-gray-300"
-      />
-    </div>
-  )
 
   const isDraft = data?.data?.status === 'draft'
 
@@ -193,34 +198,34 @@ export default function EditarReportPage() {
           Conteúdo do Report
         </h2>
 
-        <Section label="Resumo Executivo" field="executiveSummary" placeholder="Parágrafo objetivo sobre o período..." rows={3} />
+        <ReportSection label="Resumo Executivo" value={form.executiveSummary} onChange={setText('executiveSummary')} placeholder="Parágrafo objetivo sobre o período..." rows={3} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Section label="Evoluções" field="evolutions" placeholder="• O que avançou no período?" />
-          <Section label="Próximos Passos" field="nextSteps" placeholder="• O que acontece na próxima semana?" />
+          <ReportSection label="Evoluções" value={form.evolutions} onChange={setText('evolutions')} placeholder="• O que avançou no período?" />
+          <ReportSection label="Próximos Passos" value={form.nextSteps} onChange={setText('nextSteps')} placeholder="• O que acontece na próxima semana?" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="border border-red-100 rounded-lg p-4 bg-red-50/30">
-            <Section label="Pontos Críticos" field="criticalPoints" icon="🔴" placeholder="Situações que exigem ação imediata..." />
+            <ReportSection label="Pontos Críticos" value={form.criticalPoints} onChange={setText('criticalPoints')} placeholder="Situações que exigem ação imediata..." />
           </div>
           <div className="border border-amber-100 rounded-lg p-4 bg-amber-50/30">
-            <Section label="Pontos de Atenção" field="attentionPoints" icon="🟡" placeholder="Situações para monitorar..." />
+            <ReportSection label="Pontos de Atenção" value={form.attentionPoints} onChange={setText('attentionPoints')} placeholder="Situações para monitorar..." />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Section label="Riscos" field="risks" icon="⛔" placeholder="Riscos identificados..." />
-          <Section label="Bloqueios" field="blockers" icon="🚧" placeholder="O que está impedindo o avanço?" />
+          <ReportSection label="Riscos" value={form.risks} onChange={setText('risks')} placeholder="Riscos identificados..." />
+          <ReportSection label="Bloqueios" value={form.blockers} onChange={setText('blockers')} placeholder="O que está impedindo o avanço?" />
         </div>
 
         <div className="border border-blue-100 rounded-lg p-4 bg-blue-50/30">
-          <Section label="Decisões Necessárias" field="decisionsNeeded" icon="⚡" placeholder="O que precisa de decisão da diretoria?" />
+          <ReportSection label="Decisões Necessárias" value={form.decisionsNeeded} onChange={setText('decisionsNeeded')} placeholder="O que precisa de decisão da diretoria?" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Section label="Pendências" field="pendingItems" icon="📋" placeholder="Itens ainda abertos..." />
-          <Section label="Sugestão de Pauta" field="agendaSuggestion" icon="📅" placeholder="Tópicos para a próxima reunião..." />
+          <ReportSection label="Pendências" value={form.pendingItems} onChange={setText('pendingItems')} placeholder="Itens ainda abertos..." />
+          <ReportSection label="Sugestão de Pauta" value={form.agendaSuggestion} onChange={setText('agendaSuggestion')} placeholder="Tópicos para a próxima reunião..." />
         </div>
       </div>
 
