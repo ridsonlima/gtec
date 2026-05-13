@@ -6,7 +6,7 @@ import { Save, Users } from 'lucide-react'
 
 const ROLES = [
   { value: 'director', label: 'Diretor' },
-  { value: 'manager', label: 'Gestor' },
+  { value: 'manager', label: 'Coordenador' },
   { value: 'supervisor', label: 'Supervisor' },
   { value: 'viewer', label: 'Visualizador' },
   { value: 'admin', label: 'Administrador' },

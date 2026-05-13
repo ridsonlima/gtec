@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -8,6 +8,7 @@ import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCirc
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CDGLogo } from './CDGLogo'
+import { getRoleLabel } from '@/lib/role-labels'
 
 const AREAS = [
   { name: 'Planejamento', href: '/areas/planejamento', code: 'PLAN' },
@@ -28,6 +29,8 @@ export function Sidebar({ session, onClose }: SidebarProps) {
   const { role } = session.user
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const isLeadership = role === 'master' || role === 'director' || role === 'admin'
+  const isCoordinator = role === 'manager'
+  const showDashboard = isLeadership || isCoordinator
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-gray-100">
@@ -37,7 +40,9 @@ export function Sidebar({ session, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
-        {isLeadership && <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" active={isActive('/dashboard')} />}
+        {showDashboard && (
+          <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" active={isActive('/dashboard')} />
+        )}
 
         <div>
           <button onClick={() => setAreasOpen(!areasOpen)} className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors', 'text-gray-300 hover:text-white hover:bg-gray-800')}>
@@ -75,7 +80,7 @@ export function Sidebar({ session, onClose }: SidebarProps) {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-white truncate">{session.user.name}</p>
-            <p className="text-xs text-gray-400 capitalize">{session.user.role}</p>
+            <p className="text-xs text-gray-400">{getRoleLabel(role)}</p>
           </div>
         </div>
         <Link href="/minha-conta" className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors mb-1">

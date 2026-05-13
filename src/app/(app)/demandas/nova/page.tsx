@@ -32,7 +32,7 @@ const PRIORITY_OPTIONS = [
 
 const ORIGIN_OPTIONS = [
   { value: 'director', label: 'Diretoria' },
-  { value: 'manager', label: 'Gerencia' },
+  { value: 'manager', label: 'Coordenação' },
   { value: 'report', label: 'Report' },
   { value: 'contract', label: 'Contrato' },
   { value: 'audit', label: 'Auditoria' },
