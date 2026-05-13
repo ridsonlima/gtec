@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+﻿import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { NextRequest } from 'next/server'
@@ -11,8 +11,6 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const areaId = searchParams.get('areaId')
 
-  // Build user list — if areaId given, filter to users with scope on that area
-  // plus all directors/admins (who have global access)
   const users = await prisma.user.findMany({
     where: areaId
       ? {
@@ -28,6 +26,13 @@ export async function GET(req: NextRequest) {
       name: true,
       email: true,
       role: true,
+      areaScopes: {
+        select: {
+          areaId: true,
+          canWrite: true,
+          isPrimary: true,
+        },
+      },
     },
     orderBy: [{ role: 'asc' }, { name: 'asc' }],
   })
@@ -35,25 +40,24 @@ export async function GET(req: NextRequest) {
   return apiSuccess(users)
 }
 
-
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session) return apiError('Nao autenticado', 401)
-  if (!['master', 'admin', 'director'].includes(session.user.role)) return apiError('Sem permissao', 403)
+  if (!session) return apiError('Não autenticado', 401)
+  if (!['master', 'admin', 'director'].includes(session.user.role)) return apiError('Sem permissão', 403)
 
   const body = await req.json()
   if (!body.name || !body.email || !body.password || !body.role) {
-    return apiError('Nome, e-mail, senha e perfil sao obrigatorios', 400)
+    return apiError('Nome, e-mail, senha e perfil são obrigatórios', 400)
   }
 
-  const exists = await prisma.user.findUnique({ where: { email: body.email } })
-  if (exists) return apiError('Ja existe usuario com este e-mail', 409)
+  const exists = await prisma.user.findUnique({ where: { email: String(body.email).toLowerCase().trim() } })
+  if (exists) return apiError('Já existe usuário com este e-mail', 409)
 
   const passwordHash = await bcrypt.hash(String(body.password), 12)
   const user = await prisma.user.create({
     data: {
-      name: body.name,
-      email: body.email,
+      name: String(body.name).trim(),
+      email: String(body.email).toLowerCase().trim(),
       passwordHash,
       role: body.role,
       isActive: true,
@@ -67,7 +71,13 @@ export async function POST(req: NextRequest) {
           }
         : undefined,
     },
-    select: { id: true, name: true, email: true, role: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      areaScopes: { select: { areaId: true, canWrite: true, isPrimary: true } },
+    },
   })
 
   return apiSuccess(user, 201)
