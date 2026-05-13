@@ -91,7 +91,7 @@ export default async function AreaDetailPage({
     at_risk:   'text-red-600 bg-red-50',
     delayed:   'text-amber-600 bg-amber-50',
     suspended: 'text-gray-500 bg-gray-100',
-    completed: 'text-blue-600 bg-blue-50',
+    completed: 'Concluído',
   }
   const contractStatusLabel: Record<string, string> = {
     active:    'Ativo',
@@ -106,14 +106,14 @@ export default async function AreaDetailPage({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-gray-400 mb-1">{area.isOperational ? 'Ãrea Operacional' : 'Ãrea de Apoio'}</p>
+          <p className="text-sm text-gray-400 mb-1">{area.isOperational ? 'Área Operacional' : 'Área de Apoio'}</p>
           <h1 className="text-2xl font-bold text-gray-900">{area.name}</h1>
           {area.description && (
             <p className="text-sm text-gray-500 mt-1 max-w-2xl">{area.description}</p>
           )}
           {responsible && (
             <p className="text-sm text-gray-500 mt-1">
-              ResponsÃ¡vel: <span className="font-medium text-gray-700">{responsible.name}</span>
+              Responsável: <span className="font-medium text-gray-700">{responsible.name}</span>
             </p>
           )}
         </div>
@@ -186,7 +186,7 @@ export default async function AreaDetailPage({
               Reports
               {lastReport && (
                 <span className="text-xs font-normal text-gray-400 normal-case ml-1">
-                  â€” Ãºltimo: {timeAgo(new Date(lastReport.createdAt))}
+                  - último: {timeAgo(new Date(lastReport.createdAt))}
                 </span>
               )}
             </h2>
@@ -197,8 +197,7 @@ export default async function AreaDetailPage({
               Nenhum report ainda.
               {canWrite && (
                 <Link href={`/reports/novo?areaId=${area.id}`} className="block mt-2 text-blue-600 hover:underline">
-                  Criar primeiro report â†’
-                </Link>
+                  Criar primeiro report &rarr;</Link>
               )}
             </div>
           ) : (
@@ -214,10 +213,10 @@ export default async function AreaDetailPage({
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
                       <StatusBadge status={r.status} />
                       {r.hasCritical && (
-                        <span className="text-xs text-red-600">ðŸ”´</span>
+                        <span className="text-xs text-red-600">Crítico</span>
                       )}
                       {r.hasDecisionNeeded && (
-                        <span className="text-xs text-amber-600">âš¡</span>
+                        <span className="text-xs text-amber-600">Decisão</span>
                       )}
                     </div>
                     <p className="text-sm font-medium text-gray-800 truncate">{r.title}</p>

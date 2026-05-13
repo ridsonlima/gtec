@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { updateId: 
     where: { id: params.updateId },
     include: { demand: { select: { status: true } } },
   })
-  if (!existing) return apiError('Atualizacao nao encontrada', 404)
+  if (!existing) return apiError('Atualiza?o n?o encontrada', 404)
   if (!canChange(session.user.id, session.user.role, existing.authorId, existing.demand.status)) return apiError('Sem permissao', 403)
 
   const body = await req.json()
@@ -36,7 +36,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { updateId
     where: { id: params.updateId },
     include: { demand: { select: { status: true } } },
   })
-  if (!existing) return apiError('Atualizacao nao encontrada', 404)
+  if (!existing) return apiError('Atualiza?o n?o encontrada', 404)
   if (!canChange(session.user.id, session.user.role, existing.authorId, existing.demand.status)) return apiError('Sem permissao', 403)
 
   await prisma.demandUpdate.delete({ where: { id: params.updateId } })

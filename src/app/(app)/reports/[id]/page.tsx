@@ -46,15 +46,15 @@ export default async function ReportDetailPage({
     highlight?: string | null
   }> = [
     { key: 'executiveSummary', label: 'Resumo Executivo', icon: null },
-    { key: 'evolutions', label: 'EvoluÃ§Ãµes', icon: null },
-    { key: 'criticalPoints', label: 'Pontos CrÃ­ticos', icon: 'ðŸ”´', highlight: 'red' },
-    { key: 'attentionPoints', label: 'Pontos de AtenÃ§Ã£o', icon: 'ðŸŸ¡', highlight: 'amber' },
-    { key: 'risks', label: 'Riscos', icon: 'â›”', highlight: null },
-    { key: 'blockers', label: 'Bloqueios', icon: 'ðŸš§', highlight: null },
-    { key: 'decisionsNeeded', label: 'DecisÃµes NecessÃ¡rias', icon: 'âš¡', highlight: 'blue' },
-    { key: 'nextSteps', label: 'PrÃ³ximos Passos', icon: null },
-    { key: 'pendingItems', label: 'PendÃªncias', icon: 'ðŸ“‹' },
-    { key: 'agendaSuggestion', label: 'SugestÃ£o de Pauta', icon: 'ðŸ“…' },
+    { key: 'evolutions', label: 'Evoluções', icon: null },
+    { key: 'criticalPoints', label: 'Pontos Críticos', icon: null, highlight: 'red' },
+    { key: 'attentionPoints', label: 'Pontos de Atenção', icon: null, highlight: 'amber' },
+    { key: 'risks', label: 'Riscos', icon: null, highlight: null },
+    { key: 'blockers', label: 'Bloqueios', icon: null, highlight: null },
+    { key: 'decisionsNeeded', label: 'Decisões Necessárias', icon: null, highlight: 'blue' },
+    { key: 'nextSteps', label: 'Próximos Passos', icon: null },
+    { key: 'pendingItems', label: 'Pendências', icon: null },
+    { key: 'agendaSuggestion', label: 'Sugestão de Pauta', icon: null },
   ]
 
   const highlightClasses: Record<string, string> = {
@@ -81,12 +81,12 @@ export default async function ReportDetailPage({
               <StatusBadge status={report.status} />
               {report.hasCritical && (
                 <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                  ðŸ”´ Ponto crÃ­tico
+                  Ponto crítico
                 </span>
               )}
               {report.hasDecisionNeeded && (
                 <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                  âš¡ DecisÃ£o necessÃ¡ria
+                  Decisão necessária
                 </span>
               )}
             </div>
@@ -94,11 +94,10 @@ export default async function ReportDetailPage({
             <p className="text-sm text-gray-500 mt-1">
               Por {report.author.name}
               {report.publishedAt
-                ? ` Â· Publicado ${formatDateTime(report.publishedAt)}`
-                : ` Â· Criado ${timeAgo(report.createdAt)}`}
+                ? ` - Publicado ${formatDateTime(report.publishedAt)}`
+                : ` - Criado ${timeAgo(report.createdAt)}`}
               {report.contract && (
-                <span className="ml-2 text-gray-400">
-                  Â· <Link href={`/contratos/${report.contract.id}`} className="hover:text-blue-600">
+                <span className="ml-2 text-gray-400"> - <Link href={`/contratos/${report.contract.id}`} className="hover:text-blue-600">
                     {report.contract.number}
                   </Link>
                 </span>
@@ -130,7 +129,7 @@ export default async function ReportDetailPage({
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  Adicionar Ã  Pauta
+                  Adicionar à Pauta
                 </Link>
               </>
             )}
@@ -162,7 +161,7 @@ export default async function ReportDetailPage({
         {/* Mensagem se report vazio */}
         {sections.every(({ key }) => !(report as any)[key]?.trim()) && (
           <div className="px-6 py-8 text-center text-gray-400 text-sm">
-            Report sem conteÃºdo ainda.
+            Report sem conteúdo ainda.
             {canEdit && (
               <Link href={`/reports/${report.id}/editar`} className="ml-2 text-blue-600 hover:underline">
                 Preencher
@@ -187,11 +186,11 @@ export default async function ReportDetailPage({
         </div>
       )}
 
-      {/* InteraÃ§Ãµes / comentÃ¡rios */}
+      {/* Interações
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5" />
-          InteraÃ§Ãµes
+          Interações
         </h3>
         <ReportComments
           reportId={report.id}
@@ -204,13 +203,13 @@ export default async function ReportDetailPage({
       {report._count.versions > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            HistÃ³rico de VersÃµes ({report._count.versions})
+            Histórico de Versões ({report._count.versions})
           </h3>
           <Link
             href={`/reports/${report.id}/versoes`}
             className="text-sm text-blue-600 hover:underline"
           >
-            Ver versÃµes anteriores â†’
+            Ver versões anteriores &rarr;
           </Link>
         </div>
       )}
@@ -220,14 +219,14 @@ export default async function ReportDetailPage({
 
 function AttachmentRow({ attachment }: { attachment: any }) {
   const icons: Record<string, string> = {
-    'application/pdf': 'ðŸ“„',
-    'image/jpeg': 'ðŸ–¼',
-    'image/png': 'ðŸ–¼',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'ðŸ“Š',
-    'application/vnd.ms-excel': 'ðŸ“Š',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'ðŸ“',
+    'application/pdf': 'PDF',
+    'image/jpeg': 'IMG',
+    'image/png': 'IMG',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLS',
+    'application/vnd.ms-excel': 'XLS',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOC',
   }
-  const icon = icons[attachment.mimeType] ?? 'ðŸ“Ž'
+  const icon = icons[attachment.mimeType] ?? 'Anexo'
 
   return (
     <div className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
@@ -235,7 +234,7 @@ function AttachmentRow({ attachment }: { attachment: any }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm text-gray-700 truncate">{attachment.originalName}</p>
         <p className="text-xs text-gray-400">
-          {formatFileSize(attachment.sizeBytes)} Â· {attachment.uploadedBy.name} Â· {timeAgo(attachment.createdAt)}
+          {formatFileSize(attachment.sizeBytes)} - {attachment.uploadedBy.name} - {timeAgo(attachment.createdAt)}
         </p>
       </div>
       <a

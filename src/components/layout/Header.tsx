@@ -147,11 +147,11 @@ function NotifItem({ notification }: { notification: any }) {
                      ${!notification.isRead ? 'bg-blue-50/30' : ''}`}>
       <div className="flex gap-3">
         <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${color}`}>
-          {notification.type === 'demand_overdue' ? '⚠' :
+          {notification.type === 'demand_overdue' ? '!' :
            notification.type === 'follow_up' ? '!' :
-           notification.type === 'evidence_requested' ? '📎' :
-           notification.type === 'evidence_received' ? '✓' :
-           notification.type === 'demand_assigned' ? '→' : '💬'}
+           notification.type === 'evidence_requested' ? 'Anexo' :
+           notification.type === 'evidence_received' ? 'OK' :
+           notification.type === 'demand_assigned' ? '->' : 'Msg'}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-gray-800 leading-snug">

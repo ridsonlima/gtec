@@ -37,7 +37,7 @@ export default function UsersAdminPage() {
     const data = await res.json()
     setLoading(false)
     if (!res.ok || data?.success === false) {
-      setError(data?.error ?? 'Nao foi possivel criar o usuario')
+      setError(data?.error ?? 'Não foi possível criar o usuário')
       return
     }
     setSuccess('Usuario criado com sucesso')
@@ -48,13 +48,13 @@ export default function UsersAdminPage() {
   return (
     <div className="max-w-5xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Users className="w-5 h-5 text-gray-500" /> Usuarios</h1>
-        <p className="text-sm text-gray-500 mt-1">Cadastre pessoas e defina acesso por area.</p>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Users className="w-5 h-5 text-gray-500" /> Usuários</h1>
+        <p className="text-sm text-gray-500 mt-1">Cadastre pessoas e defina acesso por área.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <form onSubmit={submit} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Novo usuario</h2>
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Novo usuário</h2>
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
           {success && <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">{success}</div>}
           <Field label="Nome"><input required className="input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></Field>
@@ -67,8 +67,8 @@ export default function UsersAdminPage() {
               {areas.map((area: any) => <label key={area.id} className="flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-3 py-2"><input type="checkbox" checked={form.areaIds.includes(area.id)} onChange={() => toggleArea(area.id)} />{area.name}</label>)}
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={form.canWrite} onChange={(e) => setForm((f) => ({ ...f, canWrite: e.target.checked }))} />Pode criar/editar na area</label>
-          <button disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 bg-cdg-blue text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-60"><Save className="w-4 h-4" />{loading ? 'Salvando...' : 'Criar usuario'}</button>
+          <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={form.canWrite} onChange={(e) => setForm((f) => ({ ...f, canWrite: e.target.checked }))} />Pode criar/editar na área</label>
+          <button disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 bg-cdg-blue text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-60"><Save className="w-4 h-4" />{loading ? 'Salvando...' : 'Criar usuário'}</button>
         </form>
 
         <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">

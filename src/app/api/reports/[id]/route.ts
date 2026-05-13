@@ -95,7 +95,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   })
 
   if (action === 'publish') {
-    await notifyReportPublished(updated.id, updated.title, session.user.name ?? 'AlguÃ©m')
+    await notifyReportPublished(updated.id, updated.title, session.user.name ?? 'Algu?m').catch(console.error)
   }
 
   await audit({

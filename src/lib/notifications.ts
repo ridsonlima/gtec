@@ -1,164 +1,86 @@
 ﻿import { prisma } from './prisma'
-import type { NotificationType, ObjectType } from '@/types/enums'
 
-interface CreateNotificationInput {
+type NotificationInput = {
   userId: string
-  type: NotificationType
+  type: string
   title: string
   body?: string
-  link?: string
-  objectType?: ObjectType
+  objectType?: string
   objectId?: string
 }
 
-export async function createNotification(input: CreateNotificationInput) {
+export async function createNotification(input: NotificationInput) {
   return prisma.notification.create({ data: input })
 }
 
-export async function createNotificationBatch(
-  inputs: CreateNotificationInput[]
-) {
-  if (inputs.length === 0) return
-  return prisma.notification.createMany({ data: inputs })
-}
-
-// â”€â”€â”€ NOTIFICAÃ‡Ã•ES ESPECÃFICAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-export async function notifyReportPublished(
-  reportId: string,
-  reportTitle: string,
-  authorName: string
-) {
-  const directors = await prisma.user.findMany({
-    where: { role: { in: ['master', 'director', 'admin'] }, isActive: true },
-    select: { id: true },
-  })
-
-  await createNotificationBatch(
-    directors.map((d) => ({
-      userId: d.id,
-      type: 'report_published' as NotificationType,
-      title: 'Novo report publicado',
-      body: `${authorName} publicou: ${reportTitle}`,
-      link: `/reports/${reportId}`,
-      objectType: 'report' as ObjectType,
-      objectId: reportId,
-    }))
-  )
-}
-
-export async function notifyDemandAssigned(
-  demandId: string,
-  demandTitle: string,
-  responsibleId: string,
-  assignedByName: string
-) {
+export async function notifyDemandAssigned(demandId: string, demandTitle: string, responsibleId: string, authorName?: string) {
   await createNotification({
     userId: responsibleId,
     type: 'demand_assigned',
-    title: 'Nova demanda atribuÃ­da a vocÃª',
-    body: `${assignedByName} atribuiu: ${demandTitle}`,
-    link: `/demandas/${demandId}`,
+    title: 'Nova demanda atribuída a você',
+    body: authorName ? `${authorName}: ${demandTitle}` : demandTitle,
     objectType: 'demand',
     objectId: demandId,
   })
 }
 
-export async function notifyComment(
-  objectType: ObjectType,
-  objectId: string,
-  commentContent: string,
-  authorName: string,
-  notifyUserIds: string[]
-) {
-  const preview =
-    commentContent.length > 80
-      ? commentContent.slice(0, 80) + '...'
-      : commentContent
-
-  const linkMap: Partial<Record<ObjectType, string>> = {
-    report: `/reports/${objectId}`,
-    demand: `/demandas/${objectId}`,
-  }
-
-  await createNotificationBatch(
-    notifyUserIds.map((userId) => ({
-      userId,
-      type: 'comment' as NotificationType,
-      title: `Novo comentÃ¡rio de ${authorName}`,
-      body: preview,
-      link: linkMap[objectType],
-      objectType,
-      objectId,
-    }))
-  )
-}
-
-export async function notifyFollowUp(
-  objectType: ObjectType,
-  objectId: string,
-  targetUserId: string,
-  fromName: string,
-  content: string
-) {
-  const linkMap: Partial<Record<ObjectType, string>> = {
-    report: `/reports/${objectId}`,
-    demand: `/demandas/${objectId}`,
-  }
-
-  await createNotification({
-    userId: targetUserId,
-    type: 'follow_up',
-    title: `CobranÃ§a de ${fromName}`,
-    body: content.slice(0, 100),
-    link: linkMap[objectType],
-    objectType,
-    objectId,
+export async function notifyReportPublished(reportId: string, reportTitle: string, authorName: string) {
+  const directors = await prisma.user.findMany({ where: { role: { in: ['master', 'director', 'admin'] }, isActive: true } })
+  await prisma.notification.createMany({
+    data: directors.map((d) => ({
+      userId: d.id,
+      type: 'report_published',
+      title: `Novo report publicado por ${authorName}`,
+      body: reportTitle,
+      objectType: 'report',
+      objectId: reportId,
+    })),
   })
 }
 
-export async function notifyEvidenceRequested(
-  objectType: ObjectType,
-  objectId: string,
-  responsibleId: string,
-  requestedByName: string,
-  description: string
-) {
-  const linkMap: Partial<Record<ObjectType, string>> = {
-    report: `/reports/${objectId}`,
-    demand: `/demandas/${objectId}`,
-  }
+export async function notifyComment(objectType: string, objectId: string, authorName: string, targetUserIds: string[]) {
+  if (!targetUserIds.length) return
+  await prisma.notification.createMany({
+    data: targetUserIds.map((userId) => ({
+      userId,
+      type: 'comment',
+      title: `Novo comentário de ${authorName}`,
+      objectType,
+      objectId,
+    })),
+  })
+}
 
+export async function notifyEvidenceRequested(objectType: string, objectId: string, responsibleId: string, authorOrDescription: string, description?: string) {
   await createNotification({
     userId: responsibleId,
     type: 'evidence_requested',
-    title: 'EvidÃªncia solicitada',
-    body: `${requestedByName} solicitou: ${description.slice(0, 80)}`,
-    link: linkMap[objectType],
+    title: 'Evidência solicitada',
+    body: description ?? authorOrDescription,
     objectType,
     objectId,
   })
 }
 
-export async function notifyEvidenceReceived(
-  objectType: ObjectType,
-  objectId: string,
-  requestedById: string,
-  responsibleName: string
-) {
-  const linkMap: Partial<Record<ObjectType, string>> = {
-    report: `/reports/${objectId}`,
-    demand: `/demandas/${objectId}`,
-  }
-
+export async function notifyEvidenceReceived(objectType: string, objectId: string, requesterId: string, responsibleName: string) {
   await createNotification({
-    userId: requestedById,
+    userId: requesterId,
     type: 'evidence_received',
-    title: 'EvidÃªncia recebida',
-    body: `${responsibleName} enviou a evidÃªncia solicitada`,
-    link: linkMap[objectType],
+    title: 'Evidência recebida',
+    body: `${responsibleName} enviou a evidência solicitada`,
     objectType,
     objectId,
   })
 }
 
+export async function notifyFollowUp(objectType: string, objectId: string, responsibleId: string, authorName: string, content: string) {
+  if (!responsibleId) return
+  await createNotification({
+    userId: responsibleId,
+    type: 'follow_up',
+    title: 'Nova cobrança de ' + authorName,
+    body: content,
+    objectType,
+    objectId,
+  })
+}

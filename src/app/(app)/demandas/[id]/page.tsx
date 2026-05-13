@@ -69,12 +69,12 @@ export default async function DemandDetailPage({
   }
 
   const icons: Record<string, string> = {
-    'application/pdf': '📄',
-    'image/jpeg': '🖼',
-    'image/png': '🖼',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '📊',
-    'application/vnd.ms-excel': '📊',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📝',
+    'application/pdf': 'PDF',
+    'image/jpeg': 'IMG',
+    'image/png': 'IMG',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLS',
+    'application/vnd.ms-excel': 'XLS',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOC',
   }
 
   return (
@@ -115,7 +115,7 @@ export default async function DemandDetailPage({
       {/* Metadata grid */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          <MetaItem icon={<User className="w-4 h-4" />} label="Responsável" value={demand.responsible?.name ?? '—'} />
+          <MetaItem icon={<User className="w-4 h-4" />} label="Responsável" value={demand.responsible?.name ?? '-'} />
           <MetaItem icon={<Clock className="w-4 h-4" />} label="Prazo" value={demand.dueDate ? formatDate(demand.dueDate) : '—'} highlight={demand.isOverdue} />
           <MetaItem icon={<Calendar className="w-4 h-4" />} label="Prioridade" value={PRIORITY_LABELS[demand.priority] ?? demand.priority} />
           <MetaItem icon={<FileText className="w-4 h-4" />} label="Origem" value={ORIGIN_LABELS[demand.origin] ?? demand.origin} />

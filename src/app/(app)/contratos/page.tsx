@@ -10,7 +10,7 @@ const STATUS_LABELS: Record<string, string> = {
   at_risk: 'Em risco',
   delayed: 'Atrasado',
   suspended: 'Suspenso',
-  completed: 'Concluido',
+  completed: 'Concluído',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,7 +44,7 @@ export default async function ContractsPage() {
           <Briefcase className="w-5 h-5 text-gray-500" />
           Contratos
         </h1>
-        <p className="text-sm text-gray-500 mt-1">Visao consolidada dos contratos por area.</p>
+        <p className="text-sm text-gray-500 mt-1">Visão consolidada dos contratos por área.</p>
         </div>
         {['master', 'admin', 'director'].includes(session.user.role) && (
           <Link href="/contratos/novo" className="inline-flex items-center gap-2 px-3 py-2 bg-cdg-blue text-white text-sm font-medium rounded-lg hover:opacity-90">
@@ -76,7 +76,7 @@ export default async function ContractsPage() {
                 <p className="text-xs text-gray-500 mt-0.5">
                   {contract.area.name}
                   {contract.responsible ? ` - ${contract.responsible.name}` : ''}
-                  {contract.endDate ? ` - ate ${formatDate(contract.endDate)}` : ''}
+                  {contract.endDate ? ` - até ${formatDate(contract.endDate)}` : ''}
                 </p>
               </div>
               <div className="hidden sm:flex gap-3 text-xs text-gray-400">

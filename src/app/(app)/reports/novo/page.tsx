@@ -50,21 +50,16 @@ export default function NovoReportPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (publish: boolean) => {
-      if (!form.title.trim()) throw new Error('Titulo obrigatorio')
-      if (!form.areaId) throw new Error('Selecione uma area')
+      if (!form.title.trim()) throw new Error('T?tulo obrigat?rio')
+      if (!form.areaId) throw new Error('Selecione uma área')
 
       const res = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, contractId: form.contractId || null }),
+        body: JSON.stringify({ ...form, contractId: form.contractId || null, action: publish ? 'publish' : 'draft' }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erro ao salvar')
-
-      if (publish) {
-        const pubRes = await fetch(`/api/reports/${json.data.id}/publish`, { method: 'POST' })
-        if (!pubRes.ok) throw new Error('Erro ao publicar')
-      }
       return json.data.id
     },
     onSuccess: (reportId) => {
@@ -86,7 +81,7 @@ export default function NovoReportPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Novo Report</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Registre o estado e as evolucoes da sua area.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Registre o estado e as evoluções da sua área.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => saveMutation.mutate(false)} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"><Save className="w-4 h-4" />Salvar rascunho</button>
@@ -102,7 +97,7 @@ export default function NovoReportPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Area <span className="text-red-500">*</span></label>
             <select value={form.areaId} onChange={(e) => setForm((f) => ({ ...f, areaId: e.target.value, contractId: '' }))} className="input">
-              <option value="">Selecione a area...</option>
+              <option value="">Selecione a área...</option>
               {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
@@ -126,24 +121,24 @@ export default function NovoReportPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Conteudo do Report</h2>
-        <p className="text-xs text-gray-400 -mt-3">Todos os campos sao opcionais. Preencha apenas o que for relevante para o periodo.</p>
-        <Section label="Resumo Executivo" field="executiveSummary" placeholder="Resumo objetivo do periodo." rows={3} />
+        <p className="text-xs text-gray-400 -mt-3">Todos os campos são opcionais. Preencha apenas o que for relevante para o período.</p>
+        <Section label="Resumo Executivo" field="executiveSummary" placeholder="Resumo objetivo do período." rows={3} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Section label="Evolucoes" field="evolutions" placeholder="O que avancou no periodo?" />
-          <Section label="Proximos Passos" field="nextSteps" placeholder="O que acontece na proxima semana?" />
+          <Section label="Evoluções" field="evolutions" placeholder="O que avançou no período?" />
+          <Section label="Próximos Passos" field="nextSteps" placeholder="O que acontece na próxima semana?" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Section label="Pontos Criticos" field="criticalPoints" placeholder="Situacoes que exigem acao imediata." />
-          <Section label="Pontos de Atencao" field="attentionPoints" placeholder="Situacoes para monitorar." />
+          <Section label="Pontos Críticos" field="criticalPoints" placeholder="Situações que exigem ação imediata." />
+          <Section label="Pontos de Atenção" field="attentionPoints" placeholder="Situações para monitorar." />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Section label="Riscos" field="risks" placeholder="Riscos que podem impactar contrato, prazo ou qualidade." />
-          <Section label="Bloqueios" field="blockers" placeholder="O que esta impedindo o avanco?" />
+          <Section label="Bloqueios" field="blockers" placeholder="O que está impedindo o avanço?" />
         </div>
-        <Section label="Decisoes Necessarias" field="decisionsNeeded" placeholder="O que precisa de decisao ou autorizacao da diretoria?" />
+        <Section label="Decisões Necessárias" field="decisionsNeeded" placeholder="O que precisa de decisão ou autorização da diretoria?" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Section label="Pendencias" field="pendingItems" placeholder="Itens ainda abertos." />
-          <Section label="Sugestao de Pauta" field="agendaSuggestion" placeholder="Topicos para a proxima reuniao." />
+          <Section label="Sugestão de Pauta" field="agendaSuggestion" placeholder="Tópicos para a próxima reunião." />
         </div>
       </div>
 

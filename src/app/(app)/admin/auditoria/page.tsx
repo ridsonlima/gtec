@@ -18,7 +18,7 @@ export default async function AuditPage() {
     <div className="max-w-6xl space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Auditoria</h1>
-        <p className="text-sm text-gray-500 mt-1">Ultimas movimentacoes registradas no sistema.</p>
+        <p className="text-sm text-gray-500 mt-1">?ltimas movimenta??es registradas no sistema.</p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -29,8 +29,8 @@ export default async function AuditPage() {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Data</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Usuario</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Acao</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Usuário</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">A??o</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Objeto</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Detalhes</th>
               </tr>

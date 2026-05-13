@@ -16,7 +16,7 @@ export default function MinhaContaPage() {
     setMessage('')
     setError('')
     if (newPassword !== confirmPassword) {
-      setError('A confirmacao da senha nao confere.')
+      setError('A confirma?o da senha n?o confere.')
       return
     }
     setLoading(true)
@@ -28,7 +28,7 @@ export default function MinhaContaPage() {
     const data = await res.json()
     setLoading(false)
     if (!res.ok || data?.success === false) {
-      setError(data?.error ?? 'Nao foi possivel alterar a senha.')
+      setError(data?.error ?? 'Não foi possível alterar a senha.')
       return
     }
     setCurrentPassword('')

@@ -9,7 +9,7 @@
       {!compact && (
         <div className="min-w-0">
           <p className="text-xs font-semibold tracking-[0.38em] text-cdg-blue dark:text-white">ENGENHARIA</p>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wide">Gestao Tecnica</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wide">Gestão Técnica</p>
         </div>
       )}
     </div>

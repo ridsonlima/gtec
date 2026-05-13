@@ -42,7 +42,7 @@ export default function NewContractPage() {
     const data = await res.json()
     setLoading(false)
     if (!res.ok || data?.success === false) {
-      setError(data?.error ?? 'Nao foi possivel criar o contrato')
+      setError(data?.error ?? 'Não foi possível criar o contrato')
       return
     }
     router.push(`/contratos/${data.data.id}`)

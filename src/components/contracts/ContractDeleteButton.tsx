@@ -9,13 +9,13 @@ export function ContractDeleteButton({ contractId }: { contractId: string }) {
   const [loading, setLoading] = useState(false)
 
   async function remove() {
-    if (!confirm('Excluir este contrato? Esta acao nao pode ser desfeita.')) return
+    if (!confirm('Excluir este contrato? Esta ação não pode ser desfeita.')) return
     setLoading(true)
     const res = await fetch(`/api/contracts/${contractId}`, { method: 'DELETE' })
     const data = await res.json()
     setLoading(false)
     if (!res.ok || data?.error) {
-      alert(data?.error ?? 'Nao foi possivel excluir o contrato.')
+      alert(data?.error ?? 'Não foi possível excluir o contrato.')
       return
     }
     router.push('/contratos')

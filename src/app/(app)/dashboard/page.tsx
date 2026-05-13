@@ -102,7 +102,7 @@ export default async function DashboardPage() {
     (a) => a.daysSinceLastReport === null || a.daysSinceLastReport > 7
   ).length
 
-  const statusIcon: Record<string, string> = { critical: 'Critico', attention: 'Atencao', ok: 'OK' }
+  const statusIcon: Record<string, string> = { critical: 'Crítico', attention: 'Atenção', ok: 'OK' }
   const contractStatusLabel: Record<string, string> = { at_risk: 'Em risco', delayed: 'Com atraso' }
 
   return (
@@ -124,13 +124,13 @@ export default async function DashboardPage() {
           href="/demandas?isOverdue=true"
         />
         <AlertCard
-          label="Evidencias Pendentes"
+          label="Evidências Pendentes"
           value={pendingEvidence}
           color={pendingEvidence > 0 ? 'red' : 'green'}
           href="/evidencias"
         />
         <AlertCard
-          label="Areas sem Update"
+          label="Áreas sem Update"
           value={inactiveAreas}
           subtitle="> 7 dias"
           color={inactiveAreas > 0 ? 'amber' : 'green'}
@@ -145,7 +145,7 @@ export default async function DashboardPage() {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Area</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 hidden sm:table-cell">Ultimo Report</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 hidden sm:table-cell">Último Report</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 hidden md:table-cell">Demandas</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Status</th>
               </tr>
@@ -161,7 +161,7 @@ export default async function DashboardPage() {
                   <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
                     {area.lastReportDate
                       ? <span className={area.daysSinceLastReport! > 7 ? 'text-amber-600 font-medium' : ''}>
-                          ha {area.daysSinceLastReport} dias
+                          há {area.daysSinceLastReport} dias
                         </span>
                       : <span className="text-red-500">Nunca</span>}
                   </td>
@@ -185,12 +185,12 @@ export default async function DashboardPage() {
         {/* Demandas críticas */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Demandas Criticas</h2>
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Demandas Críticas</h2>
             <Link href="/demandas" className="text-xs text-blue-600 hover:underline">Ver todas</Link>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
             {criticalDemands.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-gray-400 text-center">Nenhuma demanda critica</p>
+              <p className="px-4 py-6 text-sm text-gray-400 text-center">Nenhuma demanda crítica</p>
             ) : criticalDemands.map((d) => (
               <Link key={d.id} href={`/demandas/${d.id}`}
                 className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
@@ -216,7 +216,7 @@ export default async function DashboardPage() {
           {contractsAtRisk.length > 0 && (
             <section className="xl:col-span-2">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Contratos em Atencao</h2>
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Contratos em Atenção</h2>
                 <Link href="/contratos" className="text-xs text-blue-600 hover:underline">Ver todos</Link>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
@@ -257,14 +257,14 @@ export default async function DashboardPage() {
 
           {decisionsNeeded.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Aguardando Decisao</h2>
+              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Aguardando Decisão</h2>
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
                 {decisionsNeeded.map((r) => (
                   <Link key={r.id} href={`/reports/${r.id}`}
                     className="block px-4 py-3 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                        Decisao necessaria</span>
+                        Decisão necessária</span>
                       <span className="text-xs text-gray-400">{r.area.name}</span>
                     </div>
                     <p className="text-xs text-gray-600 line-clamp-2">{r.decisionsNeeded}</p>

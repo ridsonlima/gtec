@@ -12,10 +12,7 @@ interface AuditInput {
 export async function audit(input: AuditInput): Promise<void> {
   try {
     const headersList = headers()
-    const ip =
-      headersList.get('x-forwarded-for') ??
-      headersList.get('x-real-ip') ??
-      'unknown'
+    const ip = headersList.get('x-forwarded-for') ?? headersList.get('x-real-ip') ?? 'unknown'
 
     await prisma.auditLog.create({
       data: {
@@ -24,16 +21,14 @@ export async function audit(input: AuditInput): Promise<void> {
         objectType: input.objectType,
         objectId: input.objectId,
         metadata: input.metadata ? JSON.stringify(input.metadata) : undefined,
-        ipAddress: ip.split(',')[0].trim(), // pega o primeiro IP em caso de proxy
+        ipAddress: ip.split(',')[0].trim(),
       },
     })
   } catch (err) {
-    // Nunca deixar falha de auditoria quebrar a operaÃ§Ã£o principal
     console.error('[AUDIT] Falha ao registrar:', err)
   }
 }
 
-// AÃ§Ãµes prÃ©-definidas para consistÃªncia
 export const ACTIONS = {
   USER_LOGIN: 'user.login',
   USER_LOGOUT: 'user.logout',
@@ -58,4 +53,3 @@ export const ACTIONS = {
   AGENDA_CREATED: 'agenda.created',
   AGENDA_UPDATED: 'agenda.updated',
 } as const
-

@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const data = CreateReportSchema.parse(body)
+    const shouldPublish = body.action === 'publish'
 
     // Verifica escopo de escrita na Ã¡rea
     if (!canAccessArea(session, data.areaId, true) && !['master', 'admin'].includes(session.user.role)) {
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
         authorId: session.user.id,
         title: data.title,
         period: data.period,
-        status: 'draft',
+        status: shouldPublish ? 'published' : 'draft',
         executiveSummary: data.executiveSummary,
         evolutions: data.evolutions,
         criticalPoints: data.criticalPoints,
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest) {
         nextSteps: data.nextSteps,
         pendingItems: data.pendingItems,
         agendaSuggestion: data.agendaSuggestion,
+        publishedAt: shouldPublish ? new Date() : null,
         hasCritical: !!(data.criticalPoints?.trim()),
         hasDecisionNeeded: !!(data.decisionsNeeded?.trim()),
       },
@@ -137,9 +139,13 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    if (shouldPublish) {
+      await notifyReportPublished(report.id, report.title, session.user.name ?? 'Algu?m').catch(console.error)
+    }
+
     await audit({
       userId: session.user.id,
-      action: ACTIONS.REPORT_CREATED,
+      action: shouldPublish ? ACTIONS.REPORT_PUBLISHED : ACTIONS.REPORT_CREATED,
       objectType: 'report',
       objectId: report.id,
     })

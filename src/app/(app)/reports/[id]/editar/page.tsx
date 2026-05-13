@@ -65,15 +65,10 @@ export default function EditarReportPage() {
       const res = await fetch(`/api/reports/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, action: publish ? 'publish' : 'update' }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erro ao salvar')
-
-      if (publish) {
-        const pubRes = await fetch(`/api/reports/${params.id}/publish`, { method: 'POST' })
-        if (!pubRes.ok) throw new Error('Erro ao publicar')
-      }
 
       return json
     },

@@ -86,7 +86,7 @@ export default function NotificacoesPage() {
 }
 
 function NotifRow({ notification: n }: { notification: any }) {
-  const icon = TYPE_ICONS[n.type] ?? '🔔'
+  const icon = TYPE_ICONS[n.type] ?? 'Notifica??o'
 
   const inner = (
     <div className={cn(

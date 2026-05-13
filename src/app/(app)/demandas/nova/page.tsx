@@ -78,7 +78,7 @@ export default function NovaDemandaPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.title.trim()) throw new Error('Titulo obrigatorio')
-      if (!form.areaId) throw new Error('Selecione uma area')
+      if (!form.areaId) throw new Error('Selecione uma área')
       if (!form.responsibleId) throw new Error('Selecione um responsavel')
       if (!form.dueDate) throw new Error('Informe o prazo')
 
@@ -102,7 +102,7 @@ export default function NovaDemandaPage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Nova Demanda</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Registre uma demanda de acompanhamento para uma area ou contrato.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Registre uma demanda de acompanhamento para uma área ou contrato.</p>
       </div>
 
       {error && (
@@ -116,7 +116,7 @@ export default function NovaDemandaPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Area" required>
             <select value={form.areaId} onChange={(e) => setForm((f) => ({ ...f, areaId: e.target.value, contractId: '', responsibleId: '' }))} className="input">
-              <option value="">Selecione a area...</option>
+              <option value="">Selecione a área...</option>
               {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </Field>
@@ -128,7 +128,7 @@ export default function NovaDemandaPage() {
             </select>
             {form.areaId && contracts.length === 0 && (
               <Link href={`/contratos/novo?areaId=${form.areaId}`} className="mt-1 inline-block text-xs text-blue-600 hover:underline">
-                Nenhum contrato nesta area. Cadastrar contrato
+                Nenhum contrato nesta área. Cadastrar contrato
               </Link>
             )}
           </Field>
@@ -143,9 +143,9 @@ export default function NovaDemandaPage() {
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Responsavel" required>
+          <Field label="Responsável" required>
             <select value={form.responsibleId} onChange={set('responsibleId')} disabled={!form.areaId} className="input disabled:bg-gray-50 disabled:text-gray-400">
-              <option value="">{form.areaId ? 'Selecione o responsavel...' : 'Selecione uma area primeiro'}</option>
+              <option value="">{form.areaId ? 'Selecione o responsável...' : 'Selecione uma área primeiro'}</option>
               {users.map((u: any) => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
             </select>
           </Field>

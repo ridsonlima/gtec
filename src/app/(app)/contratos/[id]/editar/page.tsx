@@ -71,7 +71,7 @@ export default function EditContractPage() {
     const data = await res.json()
     setLoading(false)
     if (!res.ok || data?.error) {
-      setError(data?.error ?? 'Nao foi possivel salvar o contrato')
+      setError(data?.error ?? 'Não foi possível salvar o contrato')
       return
     }
     router.push(`/contratos/${params.id}`)

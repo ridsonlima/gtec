@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -27,14 +27,14 @@ interface Comment {
 }
 
 const TYPE_LABELS: Record<CommentType, { label: string; color: string }> = {
-  observation:      { label: 'Observação',          color: 'bg-gray-100 text-gray-600' },
-  clarification:    { label: 'Solicitação',          color: 'bg-blue-50 text-blue-700' },
+  observation:      { label: 'ObservaÃ§Ã£o',          color: 'bg-gray-100 text-gray-600' },
+  clarification:    { label: 'SolicitaÃ§Ã£o',          color: 'bg-blue-50 text-blue-700' },
   follow_up:        { label: 'Acompanhamento',       color: 'bg-purple-50 text-purple-700' },
-  evidence_request: { label: 'Pedido de Evidência',  color: 'bg-amber-50 text-amber-700' },
+  evidence_request: { label: 'Pedido de EvidÃªncia',  color: 'bg-amber-50 text-amber-700' },
 }
 
 const EVIDENCE_STATUS_LABELS: Record<string, string> = {
-  pending:  '⏳ Pendente',
+  pending:  'â³ Pendente',
   received: 'S& Recebida',
   rejected: 'R Rejeitada',
 }
@@ -92,7 +92,7 @@ export function ReportComments({ reportId, areaId, session }: ReportCommentsProp
   })
 
   const handleSubmit = () => {
-    if (!content.trim()) { setError('Escreva o comentário'); return }
+    if (!content.trim()) { setError('Escreva o comentÃ¡rio'); return }
     const payload: Record<string, unknown> = {
       objectType: 'report',
       objectId: reportId,
@@ -100,7 +100,7 @@ export function ReportComments({ reportId, areaId, session }: ReportCommentsProp
       content,
     }
     if (type === 'evidence_request') {
-      if (!evidenceDesc.trim()) { setError('Descreva a evidência solicitada'); return }
+      if (!evidenceDesc.trim()) { setError('Descreva a evidÃªncia solicitada'); return }
       payload.evidenceDescription = evidenceDesc
       if (evidenceDate) payload.evidenceDueDate = evidenceDate
     }
@@ -127,17 +127,17 @@ export function ReportComments({ reportId, areaId, session }: ReportCommentsProp
     return (
       <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
         <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
-        Carregando interações...
+        Carregando interaÃ§Ãµes...
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      {/* Lista de comentários */}
+      {/* Lista de comentÃ¡rios */}
       {comments.length === 0 ? (
         <p className="text-sm text-gray-400 py-2">
-          Nenhuma interação ainda. Seja o primeiro a comentar.
+          Nenhuma interaÃ§Ã£o ainda. Seja o primeiro a comentar.
         </p>
       ) : (
         <div className="space-y-3">
@@ -171,7 +171,7 @@ export function ReportComments({ reportId, areaId, session }: ReportCommentsProp
         </div>
       )}
 
-      {/* Formulário novo comentário */}
+      {/* FormulÃ¡rio novo comentÃ¡rio */}
       {showForm ? (
         <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50/50">
           <div className="flex flex-wrap gap-2">
@@ -198,9 +198,7 @@ export function ReportComments({ reportId, areaId, session }: ReportCommentsProp
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={
-              type === 'evidence_request'
-                ? 'Descreva o que está solicitando como comentário/contexto...'
-                : 'Escreva seu comentário...'
+              type === 'evidence_request' ? 'Descreva o que estÃ¡ solicitando como comentÃ¡rio/contexto...' : 'Escreva seu comentÃ¡rio...'
             }
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-y
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -210,13 +208,13 @@ export function ReportComments({ reportId, areaId, session }: ReportCommentsProp
             <div className="border border-amber-200 bg-amber-50/50 rounded-lg p-3 space-y-2">
               <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
                 <FileText className="w-3.5 h-3.5" />
-                Detalhes da evidência solicitada
+                Detalhes da evidÃªncia solicitada
               </p>
               <textarea
                 rows={2}
                 value={evidenceDesc}
                 onChange={(e) => setEvidenceDesc(e.target.value)}
-                placeholder="Descreva exatamente o que deve ser enviado (ex: foto do avanço físico, planilha de medição...)"
+                placeholder="Descreva exatamente o que deve ser enviado (ex: foto do avanÃ§o fÃ­sico, planilha de mediÃ§Ã£o...)"
                 className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm resize-none
                            focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
               />
@@ -260,7 +258,7 @@ export function ReportComments({ reportId, areaId, session }: ReportCommentsProp
                      text-sm text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors"
         >
           <MessageSquare className="w-4 h-4" />
-          Adicionar interação
+          Adicionar interaÃ§Ã£o
         </button>
       )}
     </div>
@@ -316,7 +314,7 @@ function CommentCard({
             <span className="text-xs font-medium text-gray-700">{comment.author.name}</span>
             <span className="text-xs text-gray-400">{timeAgo(new Date(comment.createdAt))}</span>
             {isOwn && (
-              <span className="text-xs text-gray-400 italic">você</span>
+              <span className="text-xs text-gray-400 italic">vocÃª</span>
             )}
           </div>
         </div>
@@ -331,7 +329,7 @@ function CommentCard({
           <div className="mt-3 border border-amber-200 bg-amber-50 rounded-lg px-3 py-2 space-y-1">
             <div className="flex items-center gap-1.5">
               <Eye className="w-3.5 h-3.5 text-amber-600" />
-              <span className="text-xs font-semibold text-amber-700">Evidência solicitada</span>
+              <span className="text-xs font-semibold text-amber-700">EvidÃªncia solicitada</span>
               <span className={cn(
                 'ml-auto text-xs px-2 py-0.5 rounded-full font-medium',
                 comment.evidenceRequest.status === 'received'
@@ -345,9 +343,9 @@ function CommentCard({
             </div>
             <p className="text-xs text-amber-800">{comment.evidenceRequest.description}</p>
             <p className="text-xs text-amber-600">
-              Responsável: {comment.evidenceRequest.responsible.name}
+              ResponsÃ¡vel: {comment.evidenceRequest.responsible.name}
               {comment.evidenceRequest.dueDate && (
-                <> · Prazo: {new Date(comment.evidenceRequest.dueDate).toLocaleDateString('pt-BR')}</>
+                <> Â· Prazo: {new Date(comment.evidenceRequest.dueDate).toLocaleDateString('pt-BR')}</>
               )}
             </p>
           </div>

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
@@ -6,17 +6,16 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'GTec — Gestão Técnica',
+  title: 'GTec - Gestão Técnica',
   description: 'Plataforma de acompanhamento gerencial e executivo',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <meta charSet="UTF-8" />
+      </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>
