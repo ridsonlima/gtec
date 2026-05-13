@@ -59,18 +59,32 @@ export async function POST(req: NextRequest) {
   if (session.user.role !== 'admin') return apiError('Sem permissão', 403)
 
   const body = await req.json()
+  const startDate = body.startDate ? new Date(body.startDate) : new Date()
+  const executionDays = Number(body.executionDays || 0)
+  const endDate = body.endDate
+    ? new Date(body.endDate)
+    : executionDays > 0
+    ? new Date(startDate.getTime() + executionDays * 24 * 60 * 60 * 1000)
+    : null
+  const notes = [
+    body.contractType ? `Tipo de contrato: ${body.contractType}` : null,
+    executionDays > 0 ? `Prazo de execucao: ${executionDays} dias` : null,
+    body.riskNotes || null,
+  ].filter(Boolean).join('\n') || null
+
   const contract = await prisma.contract.create({
     data: {
       areaId: body.areaId,
       number: body.number,
       name: body.name,
       client: body.client,
-      description: body.description,
-      estimatedValue: body.estimatedValue,
-      startDate: body.startDate ? new Date(body.startDate) : null,
-      endDate: body.endDate ? new Date(body.endDate) : null,
+      description: body.object || body.description,
+      estimatedValue: body.estimatedValue ? Number(body.estimatedValue) : null,
+      startDate,
+      endDate,
       responsibleId: body.responsibleId,
       status: body.status ?? 'active',
+      riskNotes: notes,
     },
   })
 

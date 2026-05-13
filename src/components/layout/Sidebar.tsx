@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { CDGLogo } from './CDGLogo'
 
 const AREAS = [
   { name: 'Planejamento', href: '/areas/planejamento', code: 'PLAN' },
@@ -47,12 +48,7 @@ export function Sidebar({ session, onClose }: SidebarProps) {
     <div className="flex flex-col h-full bg-gray-900 text-gray-100">
       {/* Logo */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">G</span>
-          </div>
-          <span className="font-semibold text-white">GTec</span>
-        </div>
+        <CDGLogo />
         {onClose && (
           <button onClick={onClose} className="text-gray-400 hover:text-white lg:hidden">
             <X className="w-5 h-5" />
@@ -148,7 +144,7 @@ export function Sidebar({ session, onClose }: SidebarProps) {
         )}
 
         {/* Admin */}
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'director') && (
           <>
             <div className="border-t border-gray-700 my-2" />
             <NavItem

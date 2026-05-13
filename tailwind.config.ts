@@ -42,6 +42,11 @@ const config: Config = {
           light: '#DBEAFE',
           dark: '#1E3A8A',
         },
+        cdg: {
+          blue: '#003A5D',
+          gold: '#B66F16',
+          ink: '#0B1F2A',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

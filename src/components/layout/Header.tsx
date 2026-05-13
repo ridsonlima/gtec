@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import type { Session } from 'next-auth'
 import { Bell, Menu } from 'lucide-react'
+import { ThemeToggle } from './ThemeToggle'
 import { useState, useRef, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -58,6 +59,8 @@ export function Header({ session, onMenuClick }: HeaderProps) {
 
       {/* Espaço flexível */}
       <div className="flex-1" />
+
+      <ThemeToggle />
 
       {/* Notificações */}
       <div ref={ref} className="relative">

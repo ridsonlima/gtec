@@ -25,6 +25,26 @@
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
+
+  .dark {
+    --background: 222 31% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 28% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 28% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 204 88% 22%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 24% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 24% 18%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 36 76% 41%;
+    --accent-foreground: 210 40% 98%;
+    --border: 217 20% 24%;
+    --input: 217 20% 24%;
+    --ring: 36 76% 41%;
+  }
 }
 
 @layer base {
@@ -42,3 +62,26 @@
 .status-ok { @apply text-green-600 bg-green-50 border-green-200; }
 .status-blocked { @apply text-gray-600 bg-gray-100 border-gray-300; }
 .status-info { @apply text-blue-600 bg-blue-50 border-blue-200; }
+
+
+@layer base {
+  .dark body { @apply bg-gray-950 text-gray-100; }
+}
+
+@layer utilities {
+  .cdg-card { @apply bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-800; }
+  .cdg-muted { @apply text-gray-500 dark:text-gray-400; }
+}
+
+.dark .bg-white { background-color: rgb(17 24 39); }
+.dark .bg-gray-50 { background-color: rgb(3 7 18); }
+.dark .bg-gray-100 { background-color: rgb(31 41 55); }
+.dark .border-gray-200, .dark .border-gray-100 { border-color: rgb(31 41 55); }
+.dark .text-gray-900 { color: rgb(249 250 251); }
+.dark .text-gray-800 { color: rgb(243 244 246); }
+.dark .text-gray-700 { color: rgb(229 231 235); }
+.dark .text-gray-600 { color: rgb(209 213 219); }
+.dark .text-gray-500 { color: rgb(156 163 175); }
+.dark input, .dark select, .dark textarea { background-color: rgb(17 24 39); color: rgb(249 250 251); border-color: rgb(55 65 81); }
+
+.input { @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cdg-gold focus:border-transparent disabled:bg-gray-50; }

@@ -21,7 +21,7 @@ export default auth((req) => {
   // Rotas de admin → apenas role=admin
   const adminPaths = ['/admin', '/api/users']
   if (adminPaths.some((p) => pathname.startsWith(p))) {
-    if (session.user.role !== 'admin') {
+    if (!['admin', 'director'].includes(session.user.role)) {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
   }

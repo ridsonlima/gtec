@@ -3,6 +3,8 @@
 import { Suspense, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { CDGLogo } from '@/components/layout/CDGLogo'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 
 function LoginContent() {
   const router = useRouter()
@@ -38,7 +40,8 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
+      <div className="absolute right-4 top-4"><ThemeToggle /></div>
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">

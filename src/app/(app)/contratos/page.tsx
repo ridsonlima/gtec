@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserAreaIds } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
-import { Briefcase, ChevronRight } from 'lucide-react'
+import { Briefcase, ChevronRight, Plus } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Ativo',
@@ -38,12 +38,19 @@ export default async function ContractsPage() {
 
   return (
     <div className="max-w-5xl space-y-5">
-      <div>
+      <div className="flex items-start justify-between gap-4">
+        <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Briefcase className="w-5 h-5 text-gray-500" />
           Contratos
         </h1>
         <p className="text-sm text-gray-500 mt-1">Visao consolidada dos contratos por area.</p>
+        </div>
+        {['admin', 'director'].includes(session.user.role) && (
+          <Link href="/contratos/novo" className="inline-flex items-center gap-2 px-3 py-2 bg-cdg-blue text-white text-sm font-medium rounded-lg hover:opacity-90">
+            <Plus className="w-4 h-4" /> Novo contrato
+          </Link>
+        )}
       </div>
 
       {contracts.length === 0 ? (
