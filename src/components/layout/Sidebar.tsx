@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CDGLogo } from './CDGLogo'
@@ -63,6 +63,10 @@ export function Sidebar({ session, onClose }: SidebarProps) {
 
         <NavItem href="/contratos" icon={<FileText className="w-4 h-4" />} label="Contratos" active={isActive('/contratos')} />
         <NavItem href="/evidencias" icon={<Building2 className="w-4 h-4" />} label="Evidências" active={isActive('/evidencias')} />
+        <NavItem href="/calendario" icon={<CalendarDays className="w-4 h-4" />} label="Calendário" active={isActive('/calendario')} />
+        {(isLeadership || isCoordinator) && (
+          <NavItem href="/pauta" icon={<ClipboardList className="w-4 h-4" />} label="Pauta" active={isActive('/pauta')} />
+        )}
 
         {isLeadership && (
           <>
