@@ -12,49 +12,67 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get('from') ? new Date(searchParams.get('from')!) : new Date()
   const to   = searchParams.get('to')   ? new Date(searchParams.get('to')!)   : new Date(from.getTime() + 60 * 86400000)
 
+  // Filtros opcionais
+  const typeParam        = searchParams.get('type')        // ex: "demand,contract"
+  const responsibleParam = searchParams.get('responsible') // userId
+
+  const types = typeParam ? typeParam.split(',') : ['demand', 'contract', 'agenda']
+
   const allowedAreaIds = getUserAreaIds(session)
   const areaFilter = allowedAreaIds ? { areaId: { in: allowedAreaIds } } : {}
 
+  const responsibleFilter = responsibleParam ? { responsibleId: responsibleParam } : {}
+
   const [demands, contracts, agendas] = await Promise.all([
-    // Demandas com prazo no período
-    prisma.demand.findMany({
-      where: {
-        ...areaFilter,
-        dueDate: { gte: from, lte: to },
-        status: { notIn: ['completed', 'cancelled'] },
-      },
-      select: {
-        id: true, title: true, dueDate: true, priority: true, isOverdue: true,
-        area: { select: { name: true } },
-      },
-    }),
-    // Contratos com vencimento no período
-    prisma.contract.findMany({
-      where: {
-        ...areaFilter,
-        endDate: { gte: from, lte: to },
-        status: { notIn: ['closed', 'cancelled'] },
-      },
-      select: {
-        id: true, name: true, number: true, endDate: true, status: true,
-        area: { select: { name: true } },
-      },
-    }),
-    // Reuniões agendadas no período
-    prisma.meetingAgenda.findMany({
-      where: {
-        scheduledAt: { gte: from, lte: to },
-        status: { notIn: ['cancelled'] },
-      },
-      select: {
-        id: true, title: true, scheduledAt: true, status: true,
-        _count: { select: { items: true } },
-      },
-    }),
+    types.includes('demand')
+      ? prisma.demand.findMany({
+          where: {
+            ...areaFilter,
+            ...responsibleFilter,
+            dueDate: { gte: from, lte: to },
+            status: { notIn: ['completed', 'cancelled'] },
+          },
+          select: {
+            id: true, title: true, dueDate: true, priority: true, isOverdue: true,
+            area: { select: { name: true } },
+            responsible: { select: { id: true, name: true } },
+          },
+        })
+      : Promise.resolve([]),
+
+    types.includes('contract')
+      ? prisma.contract.findMany({
+          where: {
+            ...areaFilter,
+            ...(responsibleParam ? { responsibleId: responsibleParam } : {}),
+            endDate: { gte: from, lte: to },
+            status: { notIn: ['closed', 'cancelled'] },
+          },
+          select: {
+            id: true, name: true, number: true, endDate: true, status: true,
+            area: { select: { name: true } },
+            responsible: { select: { id: true, name: true } },
+          },
+        })
+      : Promise.resolve([]),
+
+    types.includes('agenda')
+      ? prisma.meetingAgenda.findMany({
+          where: {
+            scheduledAt: { gte: from, lte: to },
+            status: { notIn: ['cancelled'] },
+          },
+          select: {
+            id: true, title: true, scheduledAt: true, status: true,
+            _count: { select: { items: true } },
+            createdBy: { select: { id: true, name: true } },
+          },
+        })
+      : Promise.resolve([]),
   ])
 
   const events = [
-    ...demands.map((d) => ({
+    ...(demands as typeof demands).map((d) => ({
       id: d.id,
       type: 'demand' as const,
       title: d.title,
@@ -63,8 +81,9 @@ export async function GET(req: NextRequest) {
       href: `/demandas/${d.id}`,
       color: d.isOverdue ? 'red' : d.priority === 'critical' ? 'orange' : 'blue',
       badge: d.isOverdue ? 'Vencida' : d.priority === 'critical' ? 'Crítica' : null,
+      responsible: d.responsible ? { id: d.responsible.id, name: d.responsible.name } : null,
     })),
-    ...contracts.map((c) => ({
+    ...(contracts as typeof contracts).map((c) => ({
       id: c.id,
       type: 'contract' as const,
       title: c.name,
@@ -73,8 +92,9 @@ export async function GET(req: NextRequest) {
       href: `/contratos/${c.id}`,
       color: c.status === 'at_risk' ? 'red' : c.status === 'delayed' ? 'orange' : 'purple',
       badge: 'Contrato',
+      responsible: c.responsible ? { id: c.responsible.id, name: c.responsible.name } : null,
     })),
-    ...agendas.map((a) => ({
+    ...(agendas as typeof agendas).map((a) => ({
       id: a.id,
       type: 'agenda' as const,
       title: a.title,
@@ -83,6 +103,7 @@ export async function GET(req: NextRequest) {
       href: `/pauta/${a.id}`,
       color: 'green',
       badge: 'Reunião',
+      responsible: a.createdBy ? { id: a.createdBy.id, name: a.createdBy.name } : null,
     })),
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
