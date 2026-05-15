@@ -5,7 +5,7 @@ import { apiSuccess, apiError } from '@/types/api'
 import { CreateDemandSchema } from '@/schemas/demand.schema'
 import { canCreateDemand, getUserAreaIds, canAccessArea } from '@/lib/permissions'
 import { audit, ACTIONS } from '@/lib/audit'
-import { notifyDemandAssigned, notifyCollaboratorAdded } from '@/lib/notifications'
+import { notifyDemandAssigned, notifyCollaboratorAdded, notifyInterareaPendingAcceptance } from '@/lib/notifications'
 import { ZodError } from 'zod'
 
 // GET /api/demands
@@ -123,6 +123,13 @@ export async function POST(req: NextRequest) {
       return apiError('Área solicitante deve ser diferente da área executora', 422)
     }
 
+    // Calcula SLA de aceite para demandas interárea
+    const SLA_HOURS: Record<string, number> = { critical: 4, high: 8, medium: 24, low: 48 }
+    const isInterArea = Boolean(data.requestingAreaId)
+    const slaDeadline = isInterArea
+      ? new Date(Date.now() + (SLA_HOURS[data.priority] ?? 24) * 3600_000)
+      : null
+
     const demand = await prisma.demand.create({
       data: {
         areaId: data.areaId,
@@ -139,6 +146,9 @@ export async function POST(req: NextRequest) {
         blockers: data.blockers,
         supportNeeded: data.supportNeeded,
         origin: data.origin,
+        acceptanceStatus: isInterArea ? 'pending_acceptance' : null,
+        slaDeadline,
+        slaStatus: isInterArea ? 'ok' : null,
       },
       include: {
         area: { select: { id: true, name: true } },
@@ -175,6 +185,9 @@ export async function POST(req: NextRequest) {
       }),
       data.responsibleId !== session.user.id
         ? notifyDemandAssigned(demand.id, demand.title, data.responsibleId, session.user.name)
+        : Promise.resolve(),
+      isInterArea && data.requestingAreaId
+        ? notifyInterareaPendingAcceptance(demand.id, demand.title, data.areaId, demand.requestingArea?.name ?? 'Área solicitante')
         : Promise.resolve(),
       ...collaboratorIds.map((userId) =>
         notifyCollaboratorAdded(demand.id, demand.title, userId, session.user.name)

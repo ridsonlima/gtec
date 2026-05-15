@@ -9,6 +9,7 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { DemandActions } from '@/components/demands/DemandActions'
 import { DemandUpdateActions } from '@/components/demands/DemandUpdateActions'
 import { CollaboratorsPanel } from '@/components/demands/CollaboratorsPanel'
+import { AcceptancePanel } from '@/components/demands/AcceptancePanel'
 import {
   ChevronLeft, Paperclip, MessageSquare, Clock,
   User, Briefcase, FileText, Calendar, ArrowRightLeft,
@@ -22,7 +23,9 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
     where: { id: params.id },
     include: {
       area:           true,
-      requestingArea: { select: { id: true, name: true } },
+      requestingArea:  { select: { id: true, name: true } },
+      acceptedBy:      { select: { id: true, name: true } },
+      rejectedBy:      { select: { id: true, name: true } },
       contract:       { select: { id: true, number: true, name: true } },
       report:         { select: { id: true, title: true } },
       responsible:    { select: { id: true, name: true, role: true } },
@@ -83,6 +86,10 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
   }
 
   const isInterArea = Boolean(demand.requestingAreaId)
+  const canActOnAcceptancePanel = isInterArea &&
+    ['master','admin','director'].includes(session.user.role)
+    ? false // diretoria acompanha mas não aceita/rejeita
+    : session.user.areaScopes.some((s) => s.areaId === demand.areaId && s.canWrite)
 
   return (
     <div className="max-w-4xl space-y-5">
@@ -166,6 +173,22 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
           )}
         </div>
       </div>
+
+      {/* Painel de aceite (apenas demandas interárea) */}
+      {isInterArea && demand.acceptanceStatus && (
+        <AcceptancePanel
+          demandId={demand.id}
+          acceptanceStatus={demand.acceptanceStatus as any}
+          slaStatus={demand.slaStatus as any}
+          slaDeadline={demand.slaDeadline}
+          acceptedByName={demand.acceptedBy?.name}
+          acceptedAt={demand.acceptedAt}
+          rejectedByName={demand.rejectedBy?.name}
+          rejectedAt={demand.rejectedAt}
+          rejectionReason={demand.rejectionReason}
+          canActOnBehalf={canActOnAcceptancePanel}
+        />
+      )}
 
       {/* Colaboradores */}
       <CollaboratorsPanel

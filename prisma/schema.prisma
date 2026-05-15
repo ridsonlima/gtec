@@ -41,6 +41,8 @@ model User {
   reportsAuthored           Report[]              @relation("ReportAuthor")
   demandsCreated            Demand[]              @relation("DemandCreator")
   demandsOwned              Demand[]              @relation("DemandResponsible")
+  demandsAccepted           Demand[]              @relation("DemandAccepted")
+  demandsRejected           Demand[]              @relation("DemandRejected")
   comments                  Comment[]
   demandUpdates             DemandUpdate[]
   attachments               Attachment[]
@@ -206,6 +208,16 @@ model Demand {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
+  // Campos de workflow de aceite (apenas para demandas interárea)
+  acceptanceStatus String?   @map("acceptance_status") // pending_acceptance | accepted | rejected
+  slaDeadline      DateTime? @map("sla_deadline")
+  slaStatus        String?   @map("sla_status")        // ok | warning | breached
+  acceptedAt       DateTime? @map("accepted_at")
+  acceptedById     String?   @map("accepted_by_id")
+  rejectedAt       DateTime? @map("rejected_at")
+  rejectedById     String?   @map("rejected_by_id")
+  rejectionReason  String?   @map("rejection_reason")
+
   area             Area                @relation(fields: [areaId], references: [id])
   requestingArea   Area?               @relation("DemandRequestingArea", fields: [requestingAreaId], references: [id])
   contract         Contract?           @relation(fields: [contractId], references: [id])
@@ -213,6 +225,8 @@ model Demand {
   project          Project?            @relation(fields: [projectId], references: [id])
   responsible      User                @relation("DemandResponsible", fields: [responsibleId], references: [id])
   createdBy        User                @relation("DemandCreator", fields: [createdById], references: [id])
+  acceptedBy       User?               @relation("DemandAccepted", fields: [acceptedById], references: [id])
+  rejectedBy       User?               @relation("DemandRejected", fields: [rejectedById], references: [id])
   updates          DemandUpdate[]
   comments         Comment[]           @relation("DemandComments")
   attachments      Attachment[]        @relation("DemandAttachments")
@@ -222,6 +236,10 @@ model Demand {
 
   @@index([areaId, status])
   @@index([requestingAreaId])
+  @@index([acceptanceStatus])
+  @@index([slaDeadline])
+  @@index([acceptedById])
+  @@index([rejectedById])
   @@index([dueDate, status])
   @@index([responsibleId])
   @@map("demands")

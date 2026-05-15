@@ -106,3 +106,82 @@ export async function notifyCollaboratorAdded(demandId: string, demandTitle: str
     objectId: demandId,
   })
 }
+
+export async function notifyInterareaPendingAcceptance(demandId: string, demandTitle: string, areaId: string, requestingAreaName: string) {
+  const managers = await prisma.userAreaScope.findMany({
+    where: { areaId, canWrite: true },
+    select: { userId: true },
+  })
+  if (!managers.length) return
+  await prisma.notification.createMany({
+    data: managers.map((m) => ({
+      userId: m.userId,
+      type: 'interarea_pending',
+      title: 'Nova solicitação interárea aguarda aceite',
+      body: `${requestingAreaName} solicitou: ${demandTitle}`,
+      objectType: 'demand',
+      objectId: demandId,
+    })),
+  })
+}
+
+export async function notifyDemandAccepted(demandId: string, demandTitle: string, requestingAreaId: string, acceptedByName: string) {
+  const managers = await prisma.userAreaScope.findMany({
+    where: { areaId: requestingAreaId, canWrite: true },
+    select: { userId: true },
+  })
+  if (!managers.length) return
+  await prisma.notification.createMany({
+    data: managers.map((m) => ({
+      userId: m.userId,
+      type: 'interarea_accepted',
+      title: 'Solicitação interárea aceita',
+      body: `${acceptedByName} aceitou: ${demandTitle}`,
+      objectType: 'demand',
+      objectId: demandId,
+    })),
+  })
+}
+
+export async function notifyDemandRejected(demandId: string, demandTitle: string, requestingAreaId: string, rejectedByName: string, reason: string) {
+  const managers = await prisma.userAreaScope.findMany({
+    where: { areaId: requestingAreaId, canWrite: true },
+    select: { userId: true },
+  })
+  if (!managers.length) return
+  await prisma.notification.createMany({
+    data: managers.map((m) => ({
+      userId: m.userId,
+      type: 'interarea_rejected',
+      title: 'Solicitação interárea rejeitada',
+      body: `${rejectedByName} rejeitou "${demandTitle}": ${reason}`,
+      objectType: 'demand',
+      objectId: demandId,
+    })),
+  })
+}
+
+export async function notifySlaBreach(demandId: string, demandTitle: string, areaId: string) {
+  const directors = await prisma.user.findMany({
+    where: { role: { in: ['master', 'director', 'admin'] }, isActive: true },
+    select: { id: true },
+  })
+  const managers = await prisma.userAreaScope.findMany({
+    where: { areaId, canWrite: true },
+    select: { userId: true },
+  })
+  const allIds = [...directors.map((d) => d.id), ...managers.map((m) => m.userId)]
+  const userIds = allIds.filter((id, idx) => allIds.indexOf(id) === idx)
+  if (!userIds.length) return
+  await prisma.notification.createMany({
+    data: userIds.map((userId) => ({
+      userId,
+      type: 'sla_breached',
+      title: 'SLA de aceite vencido',
+      body: `A demanda interárea "${demandTitle}" não foi aceita dentro do prazo`,
+      objectType: 'demand',
+      objectId: demandId,
+    })),
+    skipDuplicates: true,
+  })
+}
