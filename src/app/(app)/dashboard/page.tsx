@@ -1,12 +1,12 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { subDays, startOfMonth } from 'date-fns'
+import { subDays, startOfMonth, addDays } from 'date-fns'
 import Link from 'next/link'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
-import { ArrowRightLeft, AlertTriangle } from 'lucide-react'
+import { ArrowRightLeft, AlertTriangle, Clock } from 'lucide-react'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -41,6 +41,7 @@ export default async function DashboardPage() {
       activeContracts,
       interareaSlaAlerts,
       demandsLast30d,
+      contractsExpiringSoon,
     ] = await Promise.all([
       prisma.demand.count({
         where: { isOverdue: true, status: { notIn: ['completed', 'cancelled'] } },
@@ -116,6 +117,13 @@ export default async function DashboardPage() {
       prisma.demand.findMany({
         where: { createdAt: { gte: subDays(today, 30) } },
         select: { areaId: true, status: true },
+      }),
+      // Contratos vencendo nos próximos 30 dias
+      prisma.contract.count({
+        where: {
+          status: { notIn: ['completed', 'suspended'] },
+          endDate: { gte: today, lte: addDays(today, 30) },
+        },
       }),
     ])
 
@@ -193,6 +201,21 @@ export default async function DashboardPage() {
           <AlertCard label="Contratos em Risco" value={contractsAtRisk.length} color={contractsAtRisk.length > 0 ? 'amber' : 'green'} href="/contratos?status=at_risk" />
           <AlertCard label="SLA Interárea em Risco" value={interareaSlaAlerts.length} color={interareaSlaAlerts.length > 0 ? 'red' : 'green'} href="/relatorio-interarea" />
         </div>
+
+        {/* Alerta de contratos vencendo */}
+        {contractsExpiringSoon > 0 && (
+          <Link
+            href="/contratos"
+            className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors"
+          >
+            <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span className="text-sm font-medium text-amber-800 flex-1">
+              {contractsExpiringSoon} contrato{contractsExpiringSoon !== 1 ? 's' : ''}{' '}
+              vence{contractsExpiringSoon === 1 ? '' : 'm'} nos próximos 30 dias
+            </span>
+            <span className="text-xs text-amber-600">Ver contratos →</span>
+          </Link>
+        )}
 
         {/* Painel SLA Interárea */}
         {interareaSlaAlerts.length > 0 && (

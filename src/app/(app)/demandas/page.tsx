@@ -1,5 +1,7 @@
 'use client'
 
+'use client'
+
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
@@ -7,6 +9,26 @@ import { Plus, Filter, ArrowRightLeft, LayoutGrid } from 'lucide-react'
 import { formatDate, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
+
+function daysUntil(dateStr: string | null): number | null {
+  if (!dateStr) return null
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000)
+}
+
+function DaysTag({ dueDate, isOverdue }: { dueDate: string | null; isOverdue: boolean }) {
+  if (!dueDate) return null
+  if (isOverdue) return null
+  const days = daysUntil(dueDate)
+  if (days === null || days > 7) return null
+  if (days <= 0) return null
+  return (
+    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+      days <= 2 ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-amber-50 text-amber-600 border border-amber-200'
+    }`}>
+      {days === 1 ? 'vence amanhã' : `${days}d restantes`}
+    </span>
+  )
+}
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos os status' },
@@ -212,6 +234,7 @@ export default function DemandasPage() {
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     <PriorityBadge priority={d.priority} />
                     <StatusBadge status={d.status} />
+                    <DaysTag dueDate={d.dueDate} isOverdue={d.isOverdue} />
                     <span className="text-xs text-gray-400">
                       {d.requestingArea ? `${d.requestingArea.name} → ${d.area?.name}` : d.area?.name}
                     </span>
