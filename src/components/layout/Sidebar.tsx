@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, BarChart2, LayoutGrid } from 'lucide-react'
+import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, BarChart2, LayoutGrid, Activity } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CDGLogo } from './CDGLogo'
@@ -71,6 +71,9 @@ export function Sidebar({ session, onClose }: SidebarProps) {
         )}
         {(isLeadership || isCoordinator) && (
           <NavItem href="/projetos" icon={<Briefcase className="w-4 h-4" />} label="Projetos" active={isActive('/projetos')} />
+        )}
+        {(isLeadership || isCoordinator) && (
+          <NavItem href="/atividade" icon={<Activity className="w-4 h-4" />} label="Atividade" active={isActive('/atividade')} />
         )}
 
         {isLeadership && (

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { Plus, Filter, ArrowRightLeft } from 'lucide-react'
+import { Plus, Filter, ArrowRightLeft, LayoutGrid } from 'lucide-react'
 import { formatDate, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
@@ -70,14 +70,24 @@ export default function DemandasPage() {
             {total > 0 ? `${total} demanda${total !== 1 ? 's' : ''}` : 'Nenhuma demanda'}
           </p>
         </div>
-        <Link
-          href="/demandas/nova"
-          className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white
-                     text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nova Demanda
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/demandas/kanban"
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200
+                       text-sm text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Kanban
+          </Link>
+          <Link
+            href="/demandas/nova"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white
+                       text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Demanda
+          </Link>
+        </div>
       </div>
 
       {/* Filtros */}
