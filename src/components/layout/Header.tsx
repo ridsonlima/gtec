@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import type { Session } from 'next-auth'
-import { Bell, Menu } from 'lucide-react'
+import { Bell, Menu, Search } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { useState, useRef, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
@@ -12,9 +12,10 @@ import { ptBR } from 'date-fns/locale'
 interface HeaderProps {
   session: Session
   onMenuClick: () => void
+  onSearchClick: () => void
 }
 
-export function Header({ session, onMenuClick }: HeaderProps) {
+export function Header({ session, onMenuClick, onSearchClick }: HeaderProps) {
   const [notifOpen, setNotifOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -39,7 +40,7 @@ export function Header({ session, onMenuClick }: HeaderProps) {
     refetchInterval: 30_000,
   })
 
-  const unreadCount = data?.data?.unreadCount ?? 0
+  const unreadCount   = data?.data?.unreadCount ?? 0
   const notifications = data?.data?.notifications ?? []
 
   async function markAllRead() {
@@ -48,13 +49,25 @@ export function Header({ session, onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between flex-shrink-0">
+    <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center gap-2 flex-shrink-0">
       {/* Botão menu mobile */}
       <button
         onClick={onMenuClick}
         className="lg:hidden text-gray-500 hover:text-gray-700 p-1"
       >
         <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Botão de busca */}
+      <button
+        onClick={onSearchClick}
+        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+      >
+        <Search className="w-4 h-4" />
+        <span className="hidden sm:inline">Buscar…</span>
+        <kbd className="hidden sm:inline-flex text-xs bg-white text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 ml-1">
+          Ctrl K
+        </kbd>
       </button>
 
       {/* Espaço flexível */}
@@ -118,7 +131,7 @@ export function Header({ session, onMenuClick }: HeaderProps) {
       </div>
 
       {/* Avatar */}
-      <div className="ml-2 flex items-center gap-2">
+      <div className="ml-1 flex items-center gap-2">
         <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
           <span className="text-white text-xs font-medium">
             {session.user.name.charAt(0).toUpperCase()}
@@ -131,13 +144,13 @@ export function Header({ session, onMenuClick }: HeaderProps) {
 
 function NotifItem({ notification }: { notification: any }) {
   const typeColors: Record<string, string> = {
-    demand_overdue: 'bg-red-100 text-red-600',
-    follow_up: 'bg-amber-100 text-amber-600',
+    demand_overdue:     'bg-red-100 text-red-600',
+    follow_up:          'bg-amber-100 text-amber-600',
     evidence_requested: 'bg-purple-100 text-purple-600',
-    evidence_received: 'bg-green-100 text-green-600',
-    demand_assigned: 'bg-blue-100 text-blue-600',
-    report_published: 'bg-gray-100 text-gray-600',
-    comment: 'bg-gray-100 text-gray-600',
+    evidence_received:  'bg-green-100 text-green-600',
+    demand_assigned:    'bg-blue-100 text-blue-600',
+    report_published:   'bg-gray-100 text-gray-600',
+    comment:            'bg-gray-100 text-gray-600',
   }
 
   const color = typeColors[notification.type] ?? 'bg-gray-100 text-gray-600'
@@ -147,11 +160,11 @@ function NotifItem({ notification }: { notification: any }) {
                      ${!notification.isRead ? 'bg-blue-50/30' : ''}`}>
       <div className="flex gap-3">
         <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${color}`}>
-          {notification.type === 'demand_overdue' ? '!' :
-           notification.type === 'follow_up' ? '!' :
-           notification.type === 'evidence_requested' ? 'Anexo' :
-           notification.type === 'evidence_received' ? 'OK' :
-           notification.type === 'demand_assigned' ? '->' : 'Msg'}
+          {notification.type === 'demand_overdue'     ? '!' :
+           notification.type === 'follow_up'          ? '!' :
+           notification.type === 'evidence_requested' ? 'Ev' :
+           notification.type === 'evidence_received'  ? 'OK' :
+           notification.type === 'demand_assigned'    ? '->' : 'Msg'}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-gray-800 leading-snug">

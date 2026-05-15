@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, BarChart2 } from 'lucide-react'
+import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, BarChart2, LayoutGrid } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CDGLogo } from './CDGLogo'
@@ -43,6 +43,8 @@ export function Sidebar({ session, onClose }: SidebarProps) {
         {showDashboard && (
           <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" active={isActive('/dashboard')} />
         )}
+
+        <NavItem href="/meu-workspace" icon={<LayoutGrid className="w-4 h-4" />} label="Meu Workspace" active={isActive('/meu-workspace')} />
 
         <div>
           <button onClick={() => setAreasOpen(!areasOpen)} className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors', 'text-gray-300 hover:text-white hover:bg-gray-800')}>

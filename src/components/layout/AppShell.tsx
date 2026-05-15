@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Session } from 'next-auth'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { CommandPalette } from './CommandPalette'
 
 interface AppShellProps {
   session: Session
@@ -11,7 +12,20 @@ interface AppShellProps {
 }
 
 export function AppShell({ session, children }: AppShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen]   = useState(false)
+  const [paletteOpen, setPaletteOpen]   = useState(false)
+
+  // Atalho global Ctrl+K / Cmd+K
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -40,6 +54,7 @@ export function AppShell({ session, children }: AppShellProps) {
         <Header
           session={session}
           onMenuClick={() => setSidebarOpen(true)}
+          onSearchClick={() => setPaletteOpen(true)}
         />
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -47,6 +62,8 @@ export function AppShell({ session, children }: AppShellProps) {
           </div>
         </main>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   )
 }
