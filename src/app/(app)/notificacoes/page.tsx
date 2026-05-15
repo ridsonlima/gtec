@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { timeAgo } from '@/lib/utils'
-import { Bell, CheckCheck } from 'lucide-react'
+import { Bell, CheckCheck, Check } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -37,7 +37,6 @@ export default function NotificacoesPage() {
 
   return (
     <div className="max-w-2xl space-y-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -63,7 +62,6 @@ export default function NotificacoesPage() {
         )}
       </div>
 
-      {/* List */}
       {isLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto" />
@@ -77,7 +75,7 @@ export default function NotificacoesPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50 overflow-hidden">
           {notifications.map((n: any) => (
-            <NotifRow key={n.id} notification={n} />
+            <NotifRow key={n.id} notification={n} onRead={() => qc.invalidateQueries({ queryKey: ['notifications'] })} />
           ))}
         </div>
       )}
@@ -85,13 +83,19 @@ export default function NotificacoesPage() {
   )
 }
 
-function NotifRow({ notification: n }: { notification: any }) {
-  const icon = TYPE_ICONS[n.type] ?? 'Notifica??o'
+function NotifRow({ notification: n, onRead }: { notification: any; onRead: () => void }) {
+  const icon = TYPE_ICONS[n.type] ?? '🔔'
 
-  const inner = (
+  const readMutation = useMutation({
+    mutationFn: () =>
+      fetch(`/api/notifications/${n.id}`, { method: 'PATCH' }).then((r) => r.json()),
+    onSuccess: onRead,
+  })
+
+  const content = (
     <div className={cn(
-      'px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors',
-      !n.isRead && 'bg-blue-50/40'
+      'px-4 py-3 flex items-start gap-3 transition-colors',
+      !n.isRead ? 'bg-blue-50/40 hover:bg-blue-50/60' : 'hover:bg-gray-50'
     )}>
       <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
       <div className="min-w-0 flex-1">
@@ -103,14 +107,30 @@ function NotifRow({ notification: n }: { notification: any }) {
         )}
         <p className="text-xs text-gray-400 mt-1">{timeAgo(new Date(n.createdAt))}</p>
       </div>
-      {!n.isRead && (
-        <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
-      )}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {!n.isRead && (
+          <>
+            <div className="w-2 h-2 rounded-full bg-blue-500" />
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                readMutation.mutate()
+              }}
+              disabled={readMutation.isPending}
+              title="Marcar como lida"
+              className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 
   if (n.link) {
-    return <Link href={n.link}>{inner}</Link>
+    return <Link href={n.link}>{content}</Link>
   }
-  return <div>{inner}</div>
+  return <div>{content}</div>
 }

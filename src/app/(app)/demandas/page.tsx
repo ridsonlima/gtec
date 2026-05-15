@@ -1,11 +1,9 @@
 'use client'
 
-'use client'
-
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { Plus, Filter, ArrowRightLeft, LayoutGrid } from 'lucide-react'
+import { Plus, Filter, ArrowRightLeft, LayoutGrid, Download } from 'lucide-react'
 import { formatDate, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
@@ -48,38 +46,60 @@ const PRIORITY_OPTIONS = [
 ]
 
 export default function DemandasPage() {
-  const [status, setStatus] = useState('')
+  const [status, setStatus]     = useState('')
   const [priority, setPriority] = useState('')
+  const [areaId, setAreaId]     = useState('')
   const [isOverdue, setIsOverdue] = useState(false)
   const [interarea, setInterarea] = useState(false)
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
+  const [search, setSearch]     = useState('')
+  const [page, setPage]         = useState(1)
 
   const params = new URLSearchParams({
-    ...(status && { status }),
+    ...(status   && { status }),
     ...(priority && { priority }),
+    ...(areaId   && { areaId }),
     ...(isOverdue && { isOverdue: 'true' }),
     ...(interarea && { interarea: 'true' }),
-    ...(search && { search }),
+    ...(search   && { search }),
     page: String(page),
     limit: '20',
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['demands', status, priority, isOverdue, interarea, search, page],
+    queryKey: ['demands', status, priority, areaId, isOverdue, interarea, search, page],
     queryFn: () =>
       fetch(`/api/demands?${params}`).then((r) => r.json()),
   })
 
+  const { data: areasData } = useQuery({
+    queryKey: ['areas'],
+    queryFn: () => fetch('/api/areas').then((r) => r.json()),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const areas   = areasData?.data ?? []
   const demands = data?.data ?? []
-  const total = data?.total ?? 0
+  const total   = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1
+
+  const hasFilters = !!(status || priority || areaId || isOverdue || interarea || search)
+
+  function buildExportUrl() {
+    const p = new URLSearchParams()
+    if (status)   p.set('status', status)
+    if (priority) p.set('priority', priority)
+    if (areaId)   p.set('areaId', areaId)
+    if (isOverdue) p.set('isOverdue', 'true')
+    if (interarea) p.set('interarea', 'true')
+    if (search)   p.set('search', search)
+    return `/api/demands/export-all?${p.toString()}`
+  }
 
   const priorityBorder: Record<string, string> = {
     critical: 'border-l-red-500',
-    high: 'border-l-amber-500',
-    medium: 'border-l-blue-400',
-    low: 'border-l-gray-300',
+    high:     'border-l-amber-500',
+    medium:   'border-l-blue-400',
+    low:      'border-l-gray-300',
   }
 
   return (
@@ -93,6 +113,16 @@ export default function DemandasPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href={buildExportUrl()}
+            download
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200
+                       text-sm text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+            title="Exportar CSV com filtros ativos"
+          >
+            <Download className="w-4 h-4" />
+            Exportar
+          </a>
           <Link
             href="/demandas/kanban"
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200
@@ -128,6 +158,20 @@ export default function DemandasPage() {
             className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm w-48
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+
+          {areas.length > 0 && (
+            <select
+              value={areaId}
+              onChange={(e) => { setAreaId(e.target.value); setPage(1) }}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todas as áreas</option>
+              {areas.map((a: any) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          )}
 
           <select
             value={status}
@@ -172,9 +216,9 @@ export default function DemandasPage() {
             Interárea
           </label>
 
-          {(status || priority || isOverdue || interarea || search) && (
+          {hasFilters && (
             <button
-              onClick={() => { setStatus(''); setPriority(''); setIsOverdue(false); setInterarea(false); setSearch(''); setPage(1) }}
+              onClick={() => { setStatus(''); setPriority(''); setAreaId(''); setIsOverdue(false); setInterarea(false); setSearch(''); setPage(1) }}
               className="text-xs text-gray-400 hover:text-gray-600 underline"
             >
               Limpar filtros
