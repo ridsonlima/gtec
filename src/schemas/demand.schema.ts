@@ -2,17 +2,19 @@ import { z } from 'zod'
 
 export const CreateDemandSchema = z.object({
   areaId: z.string().uuid('ID de área inválido'),
+  requestingAreaId: z.string().uuid().optional().nullable(),
   contractId: z.string().uuid().optional().nullable(),
   reportId: z.string().uuid().optional().nullable(),
   title: z.string().min(3, 'Título muito curto').max(200),
   context: z.string().max(3000).optional(),
   responsibleId: z.string().uuid('Responsável inválido'),
+  collaboratorIds: z.array(z.string().uuid()).max(10).optional(),
   priority: z.enum(['critical', 'high', 'medium', 'low']).default('medium'),
   dueDate: z.string().min(1, 'Prazo obrigatório'),
   blockers: z.string().max(1000).optional(),
   supportNeeded: z.string().max(1000).optional(),
   origin: z
-    .enum(['report', 'meeting', 'director', 'manager', 'contract', 'audit', 'other'])
+    .enum(['report', 'meeting', 'director', 'manager', 'contract', 'audit', 'interarea', 'other'])
     .default('director'),
 })
 

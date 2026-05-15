@@ -1,34 +1,36 @@
 import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { canAccessArea } from '@/lib/permissions'
+import { canAccessDemand, canUpdateDemand } from '@/lib/permissions'
 import Link from 'next/link'
-import { formatDate, formatDateTime, formatFileSize, timeAgo } from '@/lib/utils'
+import { formatDate, formatFileSize, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { DemandActions } from '@/components/demands/DemandActions'
 import { DemandUpdateActions } from '@/components/demands/DemandUpdateActions'
+import { CollaboratorsPanel } from '@/components/demands/CollaboratorsPanel'
 import {
   ChevronLeft, Paperclip, MessageSquare, Clock,
-  User, Briefcase, FileText, Calendar,
+  User, Briefcase, FileText, Calendar, ArrowRightLeft,
 } from 'lucide-react'
 
-export default async function DemandDetailPage({
-  params,
-}: {
-  params: { id: string }
-}) {
+export default async function DemandDetailPage({ params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return null
 
   const demand = await prisma.demand.findUnique({
     where: { id: params.id },
     include: {
-      area:        true,
-      contract:    { select: { id: true, number: true, name: true } },
-      report:      { select: { id: true, title: true } },
-      responsible: { select: { id: true, name: true, role: true } },
-      createdBy:   { select: { id: true, name: true } },
+      area:           true,
+      requestingArea: { select: { id: true, name: true } },
+      contract:       { select: { id: true, number: true, name: true } },
+      report:         { select: { id: true, title: true } },
+      responsible:    { select: { id: true, name: true, role: true } },
+      createdBy:      { select: { id: true, name: true } },
+      collaborators: {
+        include: { user: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
       updates: {
         orderBy: { createdAt: 'desc' },
         include: { author: { select: { id: true, name: true } } },
@@ -42,9 +44,13 @@ export default async function DemandDetailPage({
         orderBy: { createdAt: 'asc' },
         include: {
           author: { select: { id: true, name: true } },
+          mentions: { include: { user: { select: { id: true, name: true } } } },
           replies: {
             orderBy: { createdAt: 'asc' },
-            include: { author: { select: { id: true, name: true } } },
+            include: {
+              author: { select: { id: true, name: true } },
+              mentions: { include: { user: { select: { id: true, name: true } } } },
+            },
           },
         },
       },
@@ -52,20 +58,19 @@ export default async function DemandDetailPage({
   })
 
   if (!demand) notFound()
-  if (!canAccessArea(session, demand.areaId)) notFound()
 
-  const canEdit =
-    session.user.role === 'master' ||
-    session.user.role === 'admin' ||
-    session.user.role === 'director' ||
-    demand.responsibleId === session.user.id
+  const collaboratorUserIds = demand.collaborators.map((c) => c.user.id)
+
+  if (!canAccessDemand(session, { ...demand, collaboratorUserIds })) notFound()
+
+  const canEdit = canUpdateDemand(session, { ...demand, collaboratorUserIds })
 
   const PRIORITY_LABELS: Record<string, string> = {
     critical: 'Crítica', high: 'Alta', medium: 'Média', low: 'Baixa',
   }
   const ORIGIN_LABELS: Record<string, string> = {
     director: 'Diretoria', manager: 'Gerência', report: 'Report',
-    contract: 'Contrato', audit: 'Auditoria', other: 'Outro',
+    contract: 'Contrato', audit: 'Auditoria', interarea: 'Solicitação Interárea', other: 'Outro',
   }
 
   const icons: Record<string, string> = {
@@ -77,13 +82,12 @@ export default async function DemandDetailPage({
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOC',
   }
 
+  const isInterArea = Boolean(demand.requestingAreaId)
+
   return (
     <div className="max-w-4xl space-y-5">
       {/* Breadcrumb */}
-      <Link
-        href={`/areas/${demand.areaId}`}
-        className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600"
-      >
+      <Link href={`/areas/${demand.areaId}`} className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600">
         <ChevronLeft className="w-4 h-4" />
         Demandas
       </Link>
@@ -97,14 +101,18 @@ export default async function DemandDetailPage({
                 VENCIDA
               </span>
             )}
+            {isInterArea && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                <ArrowRightLeft className="w-3 h-3" />
+                INTERÁREA
+              </span>
+            )}
             <PriorityBadge priority={demand.priority} />
             <StatusBadge status={demand.status} />
           </div>
           <h1 className="text-xl font-bold text-gray-900">{demand.title}</h1>
           {demand.context && (
-            <p className="text-sm text-gray-600 mt-1 max-w-2xl whitespace-pre-line">
-              {demand.context}
-            </p>
+            <p className="text-sm text-gray-600 mt-1 max-w-2xl whitespace-pre-line">{demand.context}</p>
           )}
         </div>
         {canEdit && (
@@ -119,6 +127,20 @@ export default async function DemandDetailPage({
           <MetaItem icon={<Clock className="w-4 h-4" />} label="Prazo" value={demand.dueDate ? formatDate(demand.dueDate) : '—'} highlight={demand.isOverdue} />
           <MetaItem icon={<Calendar className="w-4 h-4" />} label="Prioridade" value={PRIORITY_LABELS[demand.priority] ?? demand.priority} />
           <MetaItem icon={<FileText className="w-4 h-4" />} label="Origem" value={ORIGIN_LABELS[demand.origin] ?? demand.origin} />
+
+          {/* Área Executora */}
+          <MetaItem icon={<Briefcase className="w-4 h-4" />} label={isInterArea ? 'Área Executora' : 'Área'} value={demand.area.name} href={`/areas/${demand.areaId}`} />
+
+          {/* Área Solicitante (só em demandas interárea) */}
+          {isInterArea && demand.requestingArea && (
+            <MetaItem
+              icon={<ArrowRightLeft className="w-4 h-4" />}
+              label="Área Solicitante"
+              value={demand.requestingArea.name}
+              href={`/areas/${demand.requestingAreaId}`}
+            />
+          )}
+
           {demand.contract && (
             <div className="col-span-2">
               <MetaItem
@@ -145,22 +167,28 @@ export default async function DemandDetailPage({
         </div>
       </div>
 
+      {/* Colaboradores */}
+      <CollaboratorsPanel
+        demandId={demand.id}
+        collaborators={demand.collaborators.map((c) => ({ ...c.user, role: c.role as 'contributor' | 'observer' }))}
+        canManage={canEdit}
+        currentUserId={session.user.id}
+      />
+
       {/* Updates timeline */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
           Histórico de Atualizações
         </h3>
-
         {demand.updates.length === 0 ? (
           <p className="text-sm text-gray-400">Nenhuma atualização registrada.</p>
         ) : (
           <div className="relative">
             <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-100" />
             <div className="space-y-4">
-              {demand.updates.map((u, i) => (
+              {demand.updates.map((u) => (
                 <div key={u.id} className="relative flex gap-4 pl-8">
-                  <div className="absolute left-2 top-1.5 w-3 h-3 rounded-full border-2 border-white
-                                  bg-gray-300 ring-1 ring-gray-200" />
+                  <div className="absolute left-2 top-1.5 w-3 h-3 rounded-full border-2 border-white bg-gray-300 ring-1 ring-gray-200" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="text-xs font-medium text-gray-700">{u.author.name}</span>
@@ -171,10 +199,9 @@ export default async function DemandDetailPage({
                       )}
                       <span className="text-xs text-gray-400">{timeAgo(new Date(u.createdAt))}</span>
                     </div>
-                    {u.content && (
-                      <p className="text-sm text-gray-700 whitespace-pre-line">{u.content}</p>
-                    )}
-                    {(u.author.id === session.user.id && !['completed', 'cancelled'].includes(demand.status)) || ['master', 'admin', 'director'].includes(session.user.role) ? (
+                    {u.content && <p className="text-sm text-gray-700 whitespace-pre-line">{u.content}</p>}
+                    {((u.author.id === session.user.id && !['completed', 'cancelled'].includes(demand.status)) ||
+                      ['master', 'admin', 'director'].includes(session.user.role)) ? (
                       <DemandUpdateActions updateId={u.id} initialContent={u.content ?? ''} />
                     ) : null}
                   </div>
@@ -202,12 +229,8 @@ export default async function DemandDetailPage({
                     {formatFileSize(att.sizeBytes)} · {att.uploadedBy.name} · {timeAgo(new Date(att.createdAt))}
                   </p>
                 </div>
-                <a
-                  href={`/api/attachments/${att.id}/url`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline flex-shrink-0"
-                >
+                <a href={`/api/attachments/${att.id}/url`} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline flex-shrink-0">
                   Baixar
                 </a>
               </div>
@@ -231,6 +254,15 @@ export default async function DemandDetailPage({
                   <span className="text-xs text-gray-400">{timeAgo(new Date(c.createdAt))}</span>
                 </div>
                 <p className="text-sm text-gray-700 whitespace-pre-line">{c.content}</p>
+                {c.mentions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {c.mentions.map((m) => (
+                      <span key={m.user.id} className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+                        @{m.user.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {c.replies.length > 0 && (
                   <div className="mt-3 ml-4 border-l-2 border-gray-100 pl-3 space-y-2">
                     {c.replies.map((r) => (
@@ -240,6 +272,15 @@ export default async function DemandDetailPage({
                           <span className="text-xs text-gray-400">{timeAgo(new Date(r.createdAt))}</span>
                         </div>
                         <p className="text-sm text-gray-600 whitespace-pre-line">{r.content}</p>
+                        {r.mentions.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {r.mentions.map((m) => (
+                              <span key={m.user.id} className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+                                @{m.user.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -253,24 +294,16 @@ export default async function DemandDetailPage({
   )
 }
 
-function MetaItem({
-  icon, label, value, href, highlight,
-}: {
+function MetaItem({ icon, label, value, href, highlight }: {
   icon: React.ReactNode; label: string; value: string; href?: string; highlight?: boolean
 }) {
   return (
     <div>
-      <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
-        {icon} {label}
-      </p>
+      <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">{icon} {label}</p>
       {href ? (
-        <Link href={href} className="text-sm font-medium text-blue-600 hover:underline truncate block">
-          {value}
-        </Link>
+        <Link href={href} className="text-sm font-medium text-blue-600 hover:underline truncate block">{value}</Link>
       ) : (
-        <p className={`text-sm font-medium truncate ${highlight ? 'text-red-600' : 'text-gray-800'}`}>
-          {value}
-        </p>
+        <p className={`text-sm font-medium truncate ${highlight ? 'text-red-600' : 'text-gray-800'}`}>{value}</p>
       )}
     </div>
   )

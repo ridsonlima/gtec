@@ -9,6 +9,7 @@ import {
   notifyComment,
   notifyFollowUp,
   notifyEvidenceRequested,
+  notifyMention,
 } from '@/lib/notifications'
 import { ZodError } from 'zod'
 import type { ObjectType } from '@/types/enums'
@@ -77,9 +78,21 @@ export async function POST(req: NextRequest) {
     } else if (data.objectType === 'demand') {
       const obj = await prisma.demand.findUnique({
         where: { id: data.objectId },
-        select: { areaId: true },
+        select: { areaId: true, requestingAreaId: true },
       })
       areaId = obj?.areaId
+
+      // Colaboradores da demanda também podem comentar
+      if (areaId && !canComment(session, areaId)) {
+        const requestingOk = obj?.requestingAreaId ? canComment(session, obj.requestingAreaId) : false
+        if (!requestingOk) {
+          const isCollaborator = await prisma.demandCollaborator.findUnique({
+            where: { demandId_userId: { demandId: data.objectId, userId: session.user.id } },
+          })
+          if (!isCollaborator) return apiError('Sem permissão para comentar neste item', 403)
+        }
+        areaId = undefined // já validado acima, evita double-check abaixo
+      }
     }
 
     if (areaId && !canComment(session, areaId)) {
@@ -151,6 +164,24 @@ export async function POST(req: NextRequest) {
           data.content
         ).catch(console.error)
       }
+    }
+
+    // Processa menções: cria registros e notifica usuários mencionados
+    if (data.mentionedUserIds?.length) {
+      await prisma.mention.createMany({
+        data: data.mentionedUserIds.map((userId) => ({
+          commentId: comment.id,
+          userId,
+        })),
+        skipDuplicates: true,
+      })
+
+      const toNotify = data.mentionedUserIds.filter((id) => id !== session.user.id)
+      Promise.all(
+        toNotify.map((userId) =>
+          notifyMention(data.objectType, data.objectId, userId, session.user.name, data.content)
+        )
+      ).catch(console.error)
     }
 
     await audit({

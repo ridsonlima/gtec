@@ -84,3 +84,25 @@ export async function notifyFollowUp(objectType: string, objectId: string, respo
     objectId,
   })
 }
+
+export async function notifyMention(objectType: string, objectId: string, mentionedUserId: string, authorName: string, content: string) {
+  await createNotification({
+    userId: mentionedUserId,
+    type: 'mention',
+    title: `${authorName} mencionou você`,
+    body: content.length > 120 ? content.slice(0, 120) + '...' : content,
+    objectType,
+    objectId,
+  })
+}
+
+export async function notifyCollaboratorAdded(demandId: string, demandTitle: string, userId: string, addedByName: string) {
+  await createNotification({
+    userId,
+    type: 'collaborator_added',
+    title: 'Você foi adicionado como colaborador',
+    body: `${addedByName} te adicionou na demanda: ${demandTitle}`,
+    objectType: 'demand',
+    objectId: demandId,
+  })
+}

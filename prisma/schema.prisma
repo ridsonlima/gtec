@@ -28,29 +28,32 @@ datasource db {
 
 model User {
   id           String    @id @default(uuid())
-  name         String    
-  email        String    @unique 
-  passwordHash String    @map("password_hash") 
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
   role         String      @default("viewer")
   isActive     Boolean   @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  areaScopes          UserAreaScope[]
-  reportsAuthored     Report[]          @relation("ReportAuthor")
-  demandsCreated      Demand[]          @relation("DemandCreator")
-  demandsOwned        Demand[]          @relation("DemandResponsible")
-  comments            Comment[]
-  demandUpdates       DemandUpdate[]
-  attachments         Attachment[]
-  evidenceRequests    EvidenceRequest[] @relation("EvidenceRequester")
-  evidenceResponsible EvidenceRequest[] @relation("EvidenceResponsible")
-  notifications       Notification[]
-  auditLogs           AuditLog[]
-  contractsOwned      Contract[]
-  agendasCreated      MeetingAgenda[]
-  projectsOwned       Project[]   @relation("ProjectResponsible")
+  areaScopes                UserAreaScope[]
+  reportsAuthored           Report[]              @relation("ReportAuthor")
+  demandsCreated            Demand[]              @relation("DemandCreator")
+  demandsOwned              Demand[]              @relation("DemandResponsible")
+  comments                  Comment[]
+  demandUpdates             DemandUpdate[]
+  attachments               Attachment[]
+  evidenceRequests          EvidenceRequest[]     @relation("EvidenceRequester")
+  evidenceResponsible       EvidenceRequest[]     @relation("EvidenceResponsible")
+  notifications             Notification[]
+  auditLogs                 AuditLog[]
+  contractsOwned            Contract[]
+  agendasCreated            MeetingAgenda[]
+  projectsOwned             Project[]             @relation("ProjectResponsible")
+  demandCollaborations      DemandCollaborator[]  @relation("DemandCollaborators")
+  demandCollaborationsAdded DemandCollaborator[]  @relation("DemandCollaboratorAdder")
+  mentions                  Mention[]
 
   @@map("users")
 }
@@ -83,10 +86,11 @@ model Area {
   sortOrder     Int      @default(0) @map("sort_order")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  userScopes  UserAreaScope[]
-  reports     Report[]
-  contracts   Contract[]
-  demands     Demand[]
+  userScopes       UserAreaScope[]
+  reports          Report[]
+  contracts        Contract[]
+  demands          Demand[]
+  requestedDemands Demand[]        @relation("DemandRequestingArea")
 
   @@map("areas")
 }
@@ -181,39 +185,43 @@ model ReportVersion {
 // ─── DEMANDS ─────────────────────────────────────────────────────────────────
 
 model Demand {
-  id            String         @id @default(uuid())
-  areaId        String         @map("area_id")
-  contractId    String?        @map("contract_id")
-  reportId      String?        @map("report_id")
-  projectId     String?        @map("project_id")
-  title         String         
-  context       String?       
-  responsibleId String         @map("responsible_id")
-  createdById   String         @map("created_by_id")
-  status        String   @default("pending")
-  priority      String @default("medium")
-  dueDate       DateTime       @map("due_date")
-  completedAt   DateTime?      @map("completed_at")
-  blockers      String?       
-  supportNeeded String?        @map("support_needed")
-  origin        String   @default("manager")
-  isOverdue     Boolean        @default(false) @map("is_overdue")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id               String    @id @default(uuid())
+  areaId           String    @map("area_id")
+  requestingAreaId String?   @map("requesting_area_id")
+  contractId       String?   @map("contract_id")
+  reportId         String?   @map("report_id")
+  projectId        String?   @map("project_id")
+  title            String
+  context          String?
+  responsibleId    String    @map("responsible_id")
+  createdById      String    @map("created_by_id")
+  status           String    @default("pending")
+  priority         String    @default("medium")
+  dueDate          DateTime  @map("due_date")
+  completedAt      DateTime? @map("completed_at")
+  blockers         String?
+  supportNeeded    String?   @map("support_needed")
+  origin           String    @default("manager")
+  isOverdue        Boolean   @default(false) @map("is_overdue")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  area             Area              @relation(fields: [areaId], references: [id])
-  contract         Contract?         @relation(fields: [contractId], references: [id])
-  report           Report?           @relation(fields: [reportId], references: [id])
-  project          Project?          @relation(fields: [projectId], references: [id])
-  responsible      User              @relation("DemandResponsible", fields: [responsibleId], references: [id])
-  createdBy        User              @relation("DemandCreator", fields: [createdById], references: [id])
+  area             Area                @relation(fields: [areaId], references: [id])
+  requestingArea   Area?               @relation("DemandRequestingArea", fields: [requestingAreaId], references: [id])
+  contract         Contract?           @relation(fields: [contractId], references: [id])
+  report           Report?             @relation(fields: [reportId], references: [id])
+  project          Project?            @relation(fields: [projectId], references: [id])
+  responsible      User                @relation("DemandResponsible", fields: [responsibleId], references: [id])
+  createdBy        User                @relation("DemandCreator", fields: [createdById], references: [id])
   updates          DemandUpdate[]
-  comments         Comment[]         @relation("DemandComments")
-  attachments      Attachment[]      @relation("DemandAttachments")
-  evidenceRequests EvidenceRequest[] @relation("DemandEvidence")
-  agendaItems      AgendaItem[]      @relation("DemandAgenda")
+  comments         Comment[]           @relation("DemandComments")
+  attachments      Attachment[]        @relation("DemandAttachments")
+  evidenceRequests EvidenceRequest[]   @relation("DemandEvidence")
+  agendaItems      AgendaItem[]        @relation("DemandAgenda")
+  collaborators    DemandCollaborator[]
 
   @@index([areaId, status])
+  @@index([requestingAreaId])
   @@index([dueDate, status])
   @@index([responsibleId])
   @@map("demands")
@@ -256,6 +264,7 @@ model Comment {
   replies         Comment[]        @relation("CommentThread")
   author          User             @relation(fields: [authorId], references: [id])
   evidenceRequest EvidenceRequest?
+  mentions        Mention[]
 
   reportRef Report?  @relation("ReportComments", fields: [objectId], references: [id], map: "comment_report_ref_fk")
   demandRef Demand?  @relation("DemandComments", fields: [objectId], references: [id], map: "comment_demand_ref_fk")
@@ -432,6 +441,43 @@ model Notification {
 
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+// ─── DEMAND COLLABORATORS ────────────────────────────────────────────────────
+
+model DemandCollaborator {
+  id        String   @id @default(uuid())
+  demandId  String   @map("demand_id")
+  userId    String   @map("user_id")
+  role      String   @default("contributor")
+  addedById String   @map("added_by_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  demand  Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  user    User   @relation("DemandCollaborators", fields: [userId], references: [id])
+  addedBy User   @relation("DemandCollaboratorAdder", fields: [addedById], references: [id])
+
+  @@unique([demandId, userId])
+  @@index([demandId])
+  @@index([userId])
+  @@index([addedById])
+  @@map("demand_collaborators")
+}
+
+// ─── MENTIONS ────────────────────────────────────────────────────────────────
+
+model Mention {
+  id        String   @id @default(uuid())
+  commentId String   @map("comment_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@map("mentions")
 }
 
 // ─── AUDIT LOGS ──────────────────────────────────────────────────────────────

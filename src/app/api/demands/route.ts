@@ -5,7 +5,7 @@ import { apiSuccess, apiError } from '@/types/api'
 import { CreateDemandSchema } from '@/schemas/demand.schema'
 import { canCreateDemand, getUserAreaIds, canAccessArea } from '@/lib/permissions'
 import { audit, ACTIONS } from '@/lib/audit'
-import { notifyDemandAssigned } from '@/lib/notifications'
+import { notifyDemandAssigned, notifyCollaboratorAdded } from '@/lib/notifications'
 import { ZodError } from 'zod'
 
 // GET /api/demands
@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
   const priority = searchParams.get('priority')
   const responsibleId = searchParams.get('responsibleId')
   const isOverdue = searchParams.get('isOverdue')
+  const interarea = searchParams.get('interarea')
   const search = searchParams.get('search')
   const dueDateFrom = searchParams.get('dueDateFrom')
   const dueDateTo = searchParams.get('dueDateTo')
@@ -30,12 +31,23 @@ export async function GET(req: NextRequest) {
   const allowedAreaIds = getUserAreaIds(session)
   const where: any = {}
 
-  // Filtro de área
   if (areaId) {
     if (!canAccessArea(session, areaId)) return apiError('Sem acesso', 403)
     where.areaId = areaId
   } else if (allowedAreaIds) {
-    where.areaId = { in: allowedAreaIds }
+    // Colaborações do usuário para incluir demandas de outras áreas onde participa
+    const collabDemandIds = await prisma.demandCollaborator
+      .findMany({ where: { userId: session.user.id }, select: { demandId: true } })
+      .then((r) => r.map((c) => c.demandId))
+
+    const orClauses: any[] = [
+      { areaId: { in: allowedAreaIds } },
+      { requestingAreaId: { in: allowedAreaIds } },
+    ]
+    if (collabDemandIds.length > 0) {
+      orClauses.push({ id: { in: collabDemandIds } })
+    }
+    where.OR = orClauses
   }
 
   if (contractId) where.contractId = contractId
@@ -43,6 +55,7 @@ export async function GET(req: NextRequest) {
   if (priority) where.priority = priority
   if (responsibleId) where.responsibleId = responsibleId
   if (isOverdue === 'true') where.isOverdue = true
+  if (interarea === 'true') where.requestingAreaId = { not: null }
   if (dueDateFrom || dueDateTo) {
     where.dueDate = {}
     if (dueDateFrom) where.dueDate.gte = new Date(dueDateFrom)
@@ -71,10 +84,12 @@ export async function GET(req: NextRequest) {
         completedAt: true,
         origin: true,
         createdAt: true,
+        requestingAreaId: true,
         area: { select: { id: true, name: true, code: true } },
+        requestingArea: { select: { id: true, name: true, code: true } },
         contract: { select: { id: true, number: true, name: true } },
         responsible: { select: { id: true, name: true } },
-        _count: { select: { comments: true, attachments: true } },
+        _count: { select: { comments: true, attachments: true, collaborators: true } },
       },
     }),
     prisma.demand.count({ where }),
@@ -98,13 +113,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const data = CreateDemandSchema.parse(body)
 
+    // A área executora deve ser acessível ao criador (ou ele é director+)
     if (!canCreateDemand(session, data.areaId)) {
       return apiError('Sem permissão para criar demanda nesta área', 403)
+    }
+
+    // Se for interárea, a área solicitante deve ser diferente da executora
+    if (data.requestingAreaId && data.requestingAreaId === data.areaId) {
+      return apiError('Área solicitante deve ser diferente da área executora', 422)
     }
 
     const demand = await prisma.demand.create({
       data: {
         areaId: data.areaId,
+        requestingAreaId: data.requestingAreaId ?? null,
         contractId: data.contractId ?? null,
         reportId: data.reportId ?? null,
         title: data.title,
@@ -120,29 +142,43 @@ export async function POST(req: NextRequest) {
       },
       include: {
         area: { select: { id: true, name: true } },
+        requestingArea: { select: { id: true, name: true } },
         responsible: { select: { id: true, name: true } },
         createdBy: { select: { id: true, name: true } },
       },
     })
 
-    // Side effects
+    // Cria colaboradores iniciais (sem o responsável e sem o criador — eles já têm acesso)
+    const collaboratorIds = (data.collaboratorIds ?? []).filter(
+      (id) => id !== data.responsibleId && id !== session.user.id
+    )
+    if (collaboratorIds.length > 0) {
+      await prisma.demandCollaborator.createMany({
+        data: collaboratorIds.map((userId) => ({
+          demandId: demand.id,
+          userId,
+          role: 'contributor',
+          addedById: session.user.id,
+        })),
+        skipDuplicates: true,
+      })
+    }
+
+    // Side effects assíncronos
     Promise.all([
       audit({
         userId: session.user.id,
         action: ACTIONS.DEMAND_CREATED,
         objectType: 'demand',
         objectId: demand.id,
-        metadata: { title: data.title, areaId: data.areaId },
+        metadata: { title: data.title, areaId: data.areaId, requestingAreaId: data.requestingAreaId ?? null },
       }),
-      // Notifica responsável (se não for o próprio criador)
       data.responsibleId !== session.user.id
-        ? notifyDemandAssigned(
-            demand.id,
-            demand.title,
-            data.responsibleId,
-            session.user.name
-          )
+        ? notifyDemandAssigned(demand.id, demand.title, data.responsibleId, session.user.name)
         : Promise.resolve(),
+      ...collaboratorIds.map((userId) =>
+        notifyCollaboratorAdded(demand.id, demand.title, userId, session.user.name)
+      ),
     ]).catch(console.error)
 
     return apiSuccess(demand, 201)

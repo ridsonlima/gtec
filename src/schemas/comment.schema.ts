@@ -13,6 +13,8 @@ export const CreateCommentSchema = z.object({
   evidenceResponsibleId: z.string().uuid().optional(),
   evidenceDescription: z.string().max(1000).optional(),
   evidenceDueDate: z.string().optional().nullable(),
+  // Menções a usuários específicos
+  mentionedUserIds: z.array(z.string().uuid()).max(20).optional(),
 })
 
 export const UpdateCommentSchema = z.object({

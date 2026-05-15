@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { Plus, Filter } from 'lucide-react'
+import { Plus, Filter, ArrowRightLeft } from 'lucide-react'
 import { formatDate, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
@@ -29,6 +29,7 @@ export default function DemandasPage() {
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
   const [isOverdue, setIsOverdue] = useState(false)
+  const [interarea, setInterarea] = useState(false)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
@@ -36,13 +37,14 @@ export default function DemandasPage() {
     ...(status && { status }),
     ...(priority && { priority }),
     ...(isOverdue && { isOverdue: 'true' }),
+    ...(interarea && { interarea: 'true' }),
     ...(search && { search }),
     page: String(page),
     limit: '20',
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['demands', status, priority, isOverdue, search, page],
+    queryKey: ['demands', status, priority, isOverdue, interarea, search, page],
     queryFn: () =>
       fetch(`/api/demands?${params}`).then((r) => r.json()),
   })
@@ -127,9 +129,20 @@ export default function DemandasPage() {
             Apenas vencidas
           </label>
 
-          {(status || priority || isOverdue || search) && (
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={interarea}
+              onChange={(e) => { setInterarea(e.target.checked); setPage(1) }}
+              className="rounded border-gray-300 text-purple-500 focus:ring-purple-400"
+            />
+            <ArrowRightLeft className="w-3.5 h-3.5 text-purple-500" />
+            Interárea
+          </label>
+
+          {(status || priority || isOverdue || interarea || search) && (
             <button
-              onClick={() => { setStatus(''); setPriority(''); setIsOverdue(false); setSearch(''); setPage(1) }}
+              onClick={() => { setStatus(''); setPriority(''); setIsOverdue(false); setInterarea(false); setSearch(''); setPage(1) }}
               className="text-xs text-gray-400 hover:text-gray-600 underline"
             >
               Limpar filtros
@@ -177,13 +190,21 @@ export default function DemandasPage() {
                         VENCIDA
                       </span>
                     )}
+                    {d.requestingAreaId && (
+                      <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-200">
+                        <ArrowRightLeft className="w-3 h-3" />
+                        INTERÁREA
+                      </span>
+                    )}
                     <p className="text-sm font-medium text-gray-800 truncate">{d.title}</p>
                   </div>
 
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     <PriorityBadge priority={d.priority} />
                     <StatusBadge status={d.status} />
-                    <span className="text-xs text-gray-400">{d.area?.name}</span>
+                    <span className="text-xs text-gray-400">
+                      {d.requestingArea ? `${d.requestingArea.name} → ${d.area?.name}` : d.area?.name}
+                    </span>
                     {d.contract && (
                       <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
                         {d.contract.number}

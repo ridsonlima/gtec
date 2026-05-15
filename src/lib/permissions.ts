@@ -62,14 +62,34 @@ export function canCreateDemand(session: Session, areaId: string): boolean {
   return false
 }
 
-export function canUpdateDemand(
-  session: Session,
-  demand: { responsibleId: string; areaId: string }
-): boolean {
+type DemandAccess = {
+  areaId: string
+  requestingAreaId?: string | null
+  responsibleId: string
+  collaboratorUserIds?: string[]
+}
+
+export function canAccessDemand(session: Session, demand: DemandAccess): boolean {
+  const { role, id, areaScopes } = session.user
+  if (role === 'master' || role === 'admin' || role === 'director') return true
+  const userAreaIds = areaScopes.map((s) => s.areaId)
+  if (userAreaIds.includes(demand.areaId)) return true
+  if (demand.requestingAreaId && userAreaIds.includes(demand.requestingAreaId)) return true
+  if (demand.responsibleId === id) return true
+  if (demand.collaboratorUserIds?.includes(id)) return true
+  return false
+}
+
+export function canUpdateDemand(session: Session, demand: DemandAccess): boolean {
   const { role, id } = session.user
   if (role === 'master' || role === 'admin' || role === 'director') return true
-  if (role === 'manager') return canAccessArea(session, demand.areaId)
-  if (role === 'supervisor') return demand.responsibleId === id
+  if (role === 'manager') {
+    return canAccessArea(session, demand.areaId) ||
+      (demand.requestingAreaId ? canAccessArea(session, demand.requestingAreaId) : false)
+  }
+  if (role === 'supervisor') {
+    return demand.responsibleId === id || (demand.collaboratorUserIds?.includes(id) ?? false)
+  }
   return false
 }
 
