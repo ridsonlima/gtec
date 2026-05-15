@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/demands/sla-check",
-      "schedule": "0 * * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }
