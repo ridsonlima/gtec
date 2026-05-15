@@ -4,14 +4,14 @@ import { prisma } from '@/lib/prisma'
 import { canAccessDemand, canUpdateDemand } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDate, formatFileSize, timeAgo } from '@/lib/utils'
-import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DemandActions } from '@/components/demands/DemandActions'
-import { DemandUpdateActions } from '@/components/demands/DemandUpdateActions'
 import { CollaboratorsPanel } from '@/components/demands/CollaboratorsPanel'
 import { AcceptancePanel } from '@/components/demands/AcceptancePanel'
+import { DemandTimeline } from '@/components/demands/DemandTimeline'
 import {
-  ChevronLeft, Paperclip, MessageSquare, Clock,
+  ChevronLeft, Paperclip, Clock,
   User, Briefcase, FileText, Calendar, ArrowRightLeft,
 } from 'lucide-react'
 
@@ -31,7 +31,10 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
       responsible:    { select: { id: true, name: true, role: true } },
       createdBy:      { select: { id: true, name: true } },
       collaborators: {
-        include: { user: { select: { id: true, name: true, role: true } } },
+        include: {
+          user: { select: { id: true, name: true, role: true } },
+          addedBy: { select: { id: true, name: true } },
+        },
         orderBy: { createdAt: 'asc' },
       },
       updates: {
@@ -198,43 +201,6 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
         currentUserId={session.user.id}
       />
 
-      {/* Updates timeline */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
-          Histórico de Atualizações
-        </h3>
-        {demand.updates.length === 0 ? (
-          <p className="text-sm text-gray-400">Nenhuma atualização registrada.</p>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-100" />
-            <div className="space-y-4">
-              {demand.updates.map((u) => (
-                <div key={u.id} className="relative flex gap-4 pl-8">
-                  <div className="absolute left-2 top-1.5 w-3 h-3 rounded-full border-2 border-white bg-gray-300 ring-1 ring-gray-200" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-xs font-medium text-gray-700">{u.author.name}</span>
-                      {u.statusAfter && (
-                        <span className="text-xs text-gray-400">
-                          → <StatusBadge status={u.statusAfter} />
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-400">{timeAgo(new Date(u.createdAt))}</span>
-                    </div>
-                    {u.content && <p className="text-sm text-gray-700 whitespace-pre-line">{u.content}</p>}
-                    {((u.author.id === session.user.id && !['completed', 'cancelled'].includes(demand.status)) ||
-                      ['master', 'admin', 'director'].includes(session.user.role)) ? (
-                      <DemandUpdateActions updateId={u.id} initialContent={u.content ?? ''} />
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Attachments */}
       {demand.attachments.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -262,57 +228,37 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
         </div>
       )}
 
-      {/* Comments */}
-      {demand.comments.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5" />
-            Comentários ({demand.comments.length})
-          </h3>
-          <div className="space-y-3">
-            {demand.comments.map((c) => (
-              <div key={c.id} className="border border-gray-100 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-gray-700">{c.author.name}</span>
-                  <span className="text-xs text-gray-400">{timeAgo(new Date(c.createdAt))}</span>
-                </div>
-                <p className="text-sm text-gray-700 whitespace-pre-line">{c.content}</p>
-                {c.mentions.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {c.mentions.map((m) => (
-                      <span key={m.user.id} className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
-                        @{m.user.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {c.replies.length > 0 && (
-                  <div className="mt-3 ml-4 border-l-2 border-gray-100 pl-3 space-y-2">
-                    {c.replies.map((r) => (
-                      <div key={r.id}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-medium text-gray-600">{r.author.name}</span>
-                          <span className="text-xs text-gray-400">{timeAgo(new Date(r.createdAt))}</span>
-                        </div>
-                        <p className="text-sm text-gray-600 whitespace-pre-line">{r.content}</p>
-                        {r.mentions.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {r.mentions.map((m) => (
-                              <span key={m.user.id} className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
-                                @{m.user.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Linha do tempo unificada */}
+      <DemandTimeline
+        demand={{
+          createdAt: demand.createdAt,
+          status: demand.status,
+          createdBy: demand.createdBy,
+          acceptedAt: demand.acceptedAt,
+          acceptedBy: demand.acceptedBy,
+          rejectedAt: demand.rejectedAt,
+          rejectedBy: demand.rejectedBy,
+          rejectionReason: demand.rejectionReason,
+        }}
+        updates={demand.updates.map((u) => ({
+          ...u,
+          createdAt: new Date(u.createdAt),
+        }))}
+        comments={demand.comments.map((c) => ({
+          ...c,
+          createdAt: new Date(c.createdAt),
+          replies: c.replies.map((r) => ({ ...r, createdAt: new Date(r.createdAt) })),
+        }))}
+        collaborators={demand.collaborators.map((c) => ({
+          id: c.id,
+          createdAt: new Date(c.createdAt),
+          role: c.role,
+          user: c.user,
+          addedBy: c.addedBy,
+        }))}
+        currentUserId={session.user.id}
+        currentUserRole={session.user.role}
+      />
     </div>
   )
 }
