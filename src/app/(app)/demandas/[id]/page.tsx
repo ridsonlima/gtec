@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { canAccessDemand, canUpdateDemand } from '@/lib/permissions'
 import Link from 'next/link'
-import { formatDate, formatFileSize, timeAgo } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DemandActions } from '@/components/demands/DemandActions'
@@ -11,9 +11,10 @@ import { CollaboratorsPanel } from '@/components/demands/CollaboratorsPanel'
 import { AcceptancePanel } from '@/components/demands/AcceptancePanel'
 import { DemandTimeline } from '@/components/demands/DemandTimeline'
 import {
-  ChevronLeft, Paperclip, Clock,
+  ChevronLeft, Clock,
   User, Briefcase, FileText, Calendar, ArrowRightLeft,
 } from 'lucide-react'
+import { AttachmentsPanel } from '@/components/shared/AttachmentsPanel'
 
 export default async function DemandDetailPage({ params }: { params: { id: string } }) {
   const session = await auth()
@@ -77,15 +78,6 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
   const ORIGIN_LABELS: Record<string, string> = {
     director: 'Diretoria', manager: 'Gerência', report: 'Report',
     contract: 'Contrato', audit: 'Auditoria', interarea: 'Solicitação Interárea', other: 'Outro',
-  }
-
-  const icons: Record<string, string> = {
-    'application/pdf': 'PDF',
-    'image/jpeg': 'IMG',
-    'image/png': 'IMG',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLS',
-    'application/vnd.ms-excel': 'XLS',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOC',
   }
 
   const isInterArea = Boolean(demand.requestingAreaId)
@@ -201,32 +193,18 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
         currentUserId={session.user.id}
       />
 
-      {/* Attachments */}
-      {demand.attachments.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-            <Paperclip className="w-3.5 h-3.5" />
-            Anexos ({demand.attachments.length})
-          </h3>
-          <div className="space-y-2">
-            {demand.attachments.map((att) => (
-              <div key={att.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                <span className="text-lg">{icons[att.mimeType] ?? '📎'}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-gray-700 truncate">{att.originalName}</p>
-                  <p className="text-xs text-gray-400">
-                    {formatFileSize(att.sizeBytes)} · {att.uploadedBy.name} · {timeAgo(new Date(att.createdAt))}
-                  </p>
-                </div>
-                <a href={`/api/attachments/${att.id}/url`} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline flex-shrink-0">
-                  Baixar
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Anexos */}
+      <AttachmentsPanel
+        initialAttachments={demand.attachments.map((a) => ({
+          ...a,
+          createdAt: new Date(a.createdAt),
+        }))}
+        objectType="demand"
+        objectId={demand.id}
+        canUpload={canEdit}
+        currentUserId={session.user.id}
+        canDeleteAll={['master', 'admin', 'director'].includes(session.user.role)}
+      />
 
       {/* Linha do tempo unificada */}
       <DemandTimeline

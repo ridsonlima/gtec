@@ -9,6 +9,7 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { MilestoneList } from '@/components/projects/MilestoneList'
 import { ProjectUpdateForm } from '@/components/projects/ProjectUpdateForm'
 import { ChevronLeft, Briefcase, Calendar, User, AlertTriangle, Edit2 } from 'lucide-react'
+import { AttachmentsPanel } from '@/components/shared/AttachmentsPanel'
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   planned:     { label: 'Planejado',    cls: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -53,6 +54,12 @@ export default async function ProjetoDetailPage({ params }: { params: { id: stri
   if (!project) notFound()
 
   const dir       = isDirector(session.user.role)
+
+  const projectAttachments = await prisma.attachment.findMany({
+    where: { objectType: 'project', objectId: params.id },
+    orderBy: { createdAt: 'desc' },
+    include: { uploadedBy: { select: { id: true, name: true } } },
+  })
   const canManage = dir || session.user.id === project.responsibleId
 
   // Buscar nomes dos autores das atualizações
@@ -182,6 +189,19 @@ export default async function ProjetoDetailPage({ params }: { params: { id: stri
           </div>
         </div>
       )}
+
+      {/* Anexos */}
+      <AttachmentsPanel
+        initialAttachments={projectAttachments.map((a) => ({
+          ...a,
+          createdAt: new Date(a.createdAt),
+        }))}
+        objectType="project"
+        objectId={project.id}
+        canUpload={canManage}
+        currentUserId={session.user.id}
+        canDeleteAll={dir}
+      />
 
       {/* Atualizações */}
       <ProjectUpdateForm
