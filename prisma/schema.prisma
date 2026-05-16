@@ -126,7 +126,7 @@ model Contract {
   demands          Demand[]
   attachments      Attachment[]      @relation("ContractAttachments")
   evidenceRequests EvidenceRequest[] @relation("ContractEvidence")
-  partner          Partner?
+  contractPartners ContractPartner[]
   contractors      Contractor[]
   medicoes         Medicao[]
 
@@ -544,22 +544,57 @@ model Adiantamento {
   @@map("adiantamentos")
 }
 
-// ─── PARTNER ─────────────────────────────────────────────────────────────────
+// ─── EMPRESA PARCEIRA ────────────────────────────────────────────────────────
 
-model Partner {
-  id               String   @id @default(uuid())
-  contractId       String   @unique @map("contract_id")
-  name             String
-  cnpj             String?
-  contactName      String?  @map("contact_name")
-  contactPhone     String?  @map("contact_phone")
-  percentageGlobal Float    @map("percentage_global")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+model EmpresaParceira {
+  id           String   @id @default(uuid())
+  name         String
+  cnpj         String?  @unique
+  contactName  String?  @map("contact_name")
+  contactPhone String?  @map("contact_phone")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contractPartners ContractPartner[]
 
-  @@map("partners")
+  @@map("empresas_parceiras")
+}
+
+// ─── CONTRACT PARTNER (vínculo contrato ↔ empresa parceira) ──────────────────
+
+model ContractPartner {
+  id                String   @id @default(uuid())
+  contractId        String   @map("contract_id")
+  empresaParceiraId String   @map("empresa_parceira_id")
+  percentageTotal   Float    @map("percentage_total")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  contract        Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  empresaParceira EmpresaParceira   @relation(fields: [empresaParceiraId], references: [id])
+  instrumentos    InstrumentoFiscal[]
+
+  @@unique([contractId, empresaParceiraId])
+  @@index([contractId])
+  @@map("contract_partners")
+}
+
+// ─── INSTRUMENTO FISCAL ───────────────────────────────────────────────────────
+
+model InstrumentoFiscal {
+  id                String   @id @default(uuid())
+  contractPartnerId String   @map("contract_partner_id")
+  tipo              String   // gestao_obra | locacao_maquinas | nota_debito | outro
+  descricao         String?
+  percentage        Float?   // null = nota de débito (residual calculado)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  contractPartner ContractPartner @relation(fields: [contractPartnerId], references: [id], onDelete: Cascade)
+
+  @@index([contractPartnerId])
+  @@map("instrumentos_fiscais")
 }
 
 // ─── CONTRACTOR (EMPREITEIRO) ─────────────────────────────────────────────────

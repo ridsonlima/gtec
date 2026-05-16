@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ContractDeleteButton } from '@/components/contracts/ContractDeleteButton'
-import { PartnerSection } from '@/components/contracts/PartnerSection'
+import { ContractPartnersSection } from '@/components/contracts/ContractPartnersSection'
 import { ContractorsSection } from '@/components/contracts/ContractorsSection'
 import { MedicoesSection } from '@/components/contracts/MedicoesSection'
 import { ChevronLeft, Briefcase, Calendar, DollarSign, FileText, AlertTriangle, User } from 'lucide-react'
@@ -36,7 +36,13 @@ export default async function ContractDetailPage({ params }: { params: { id: str
     include: {
       area: true,
       responsible: { select: { id: true, name: true } },
-      partner: true,
+      contractPartners: {
+        include: {
+          empresaParceira: true,
+          instrumentos: { orderBy: { createdAt: 'asc' } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
       contractors: { orderBy: { createdAt: 'asc' } },
       medicoes: {
         orderBy: [{ competenciaAno: 'asc' }, { competenciaMes: 'asc' }],
@@ -115,7 +121,11 @@ export default async function ContractDetailPage({ params }: { params: { id: str
       </div>
 
       {contract.executionModality === 'partner' && (
-        <PartnerSection contractId={contract.id} partner={contract.partner} canEdit={canEdit} />
+        <ContractPartnersSection
+          contractId={contract.id}
+          partners={contract.contractPartners as any}
+          canEdit={canEdit}
+        />
       )}
       {contract.executionModality === 'contractor' && (
         <ContractorsSection contractId={contract.id} contractors={contract.contractors} canEdit={canEdit} />
@@ -124,7 +134,7 @@ export default async function ContractDetailPage({ params }: { params: { id: str
         <MedicoesSection
           contractId={contract.id}
           medicoes={contract.medicoes as any}
-          percentualParceiro={contract.partner?.percentageGlobal ?? 0}
+          partners={contract.contractPartners.map((cp) => ({ id: cp.id, percentageTotal: cp.percentageTotal, empresaParceira: { name: cp.empresaParceira.name } }))}
           canEdit={canEdit}
         />
       )}

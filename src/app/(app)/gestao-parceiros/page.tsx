@@ -8,16 +8,23 @@ const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'O
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const fmtComp = (ano: number, mes: number) => `${MESES[mes - 1]}/${ano}`
 
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Ativo', at_risk: 'Em risco', delayed: 'Atrasado',
-  suspended: 'Suspenso', completed: 'Concluído',
+const TIPO_LABELS: Record<string, string> = {
+  gestao_obra: 'Gestão de Obra',
+  locacao_maquinas: 'Locação de Máq.',
+  nota_debito: 'Nota de Débito',
+  outro: 'Outro',
 }
+
 const STATUS_COLORS: Record<string, string> = {
   active: 'text-green-700 bg-green-50 border-green-200',
   at_risk: 'text-red-700 bg-red-50 border-red-200',
   delayed: 'text-amber-700 bg-amber-50 border-amber-200',
   suspended: 'text-gray-600 bg-gray-100 border-gray-200',
   completed: 'text-blue-700 bg-blue-50 border-blue-200',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  active: 'Ativo', at_risk: 'Em risco', delayed: 'Atrasado', suspended: 'Suspenso', completed: 'Concluído',
 }
 
 export default async function GestaoParceirosPage() {
@@ -34,7 +41,13 @@ export default async function GestaoParceirosPage() {
     include: {
       area: { select: { id: true, name: true } },
       responsible: { select: { id: true, name: true } },
-      partner: true,
+      contractPartners: {
+        include: {
+          empresaParceira: true,
+          instrumentos: { orderBy: { createdAt: 'asc' } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
       medicoes: {
         orderBy: [{ competenciaAno: 'desc' }, { competenciaMes: 'desc' }],
         include: { adiantamentos: true },
@@ -44,38 +57,52 @@ export default async function GestaoParceirosPage() {
   })
 
   const contratos = contracts.map((c) => {
-    const pct = c.partner?.percentageGlobal ?? 0
-    const totais = c.medicoes.reduce(
-      (acc, m) => {
-        const somaAdiant = m.adiantamentos.reduce((s, a) => s + a.valor, 0)
-        const repasse = (m.valorFaturado * pct) / 100
-        return {
-          produzido: acc.produzido + m.valorProduzido,
-          aprovado: acc.aprovado + m.valorAprovado,
-          faturado: acc.faturado + m.valorFaturado,
-          contestacao: acc.contestacao + (m.valorProduzido - m.valorAprovado),
-          prateleira: acc.prateleira + (m.valorAprovado - m.valorFaturado),
-          repasse: acc.repasse + repasse,
-          adiantamentos: acc.adiantamentos + somaAdiant,
-          repasse_liq: acc.repasse_liq + (repasse - somaAdiant),
-        }
-      },
-      { produzido: 0, aprovado: 0, faturado: 0, contestacao: 0, prateleira: 0, repasse: 0, adiantamentos: 0, repasse_liq: 0 }
+    const totaisMed = c.medicoes.reduce(
+      (acc, m) => ({
+        produzido: acc.produzido + m.valorProduzido,
+        aprovado: acc.aprovado + m.valorAprovado,
+        faturado: acc.faturado + m.valorFaturado,
+        contestacao: acc.contestacao + (m.valorProduzido - m.valorAprovado),
+        prateleira: acc.prateleira + (m.valorAprovado - m.valorFaturado),
+      }),
+      { produzido: 0, aprovado: 0, faturado: 0, contestacao: 0, prateleira: 0 }
     )
-    return { ...c, totais, ultimaMedicao: c.medicoes[0] ?? null }
+
+    const totalAdiantamentos = c.medicoes.reduce(
+      (s, m) => s + m.adiantamentos.reduce((a, ad) => a + ad.valor, 0), 0
+    )
+
+    const parceiros = c.contractPartners.map((cp) => {
+      const pct = cp.percentageTotal
+      const repasse_bruto = (totaisMed.faturado * pct) / 100
+      const somaFixos = cp.instrumentos
+        .filter((i) => i.tipo !== 'nota_debito' && i.percentage != null)
+        .reduce((s, i) => s + (i.percentage ?? 0), 0)
+
+      const instrumentos = cp.instrumentos.map((i) => {
+        const pctEfetivo = i.tipo === 'nota_debito' ? (pct - somaFixos) : (i.percentage ?? 0)
+        return { ...i, pctEfetivo, valorRepasse: (totaisMed.faturado * pctEfetivo) / 100 }
+      })
+
+      return { cp, pct, repasse_bruto, instrumentos }
+    })
+
+    const totalRepasse = parceiros.reduce((s, p) => s + p.repasse_bruto, 0)
+
+    return { ...c, totaisMed, totalAdiantamentos, parceiros, totalRepasse, ultimaMedicao: c.medicoes[0] ?? null }
   })
 
   const grand = contratos.reduce(
     (acc, c) => ({
-      produzido: acc.produzido + c.totais.produzido,
-      aprovado: acc.aprovado + c.totais.aprovado,
-      faturado: acc.faturado + c.totais.faturado,
-      contestacao: acc.contestacao + c.totais.contestacao,
-      prateleira: acc.prateleira + c.totais.prateleira,
-      repasse: acc.repasse + c.totais.repasse,
-      repasse_liq: acc.repasse_liq + c.totais.repasse_liq,
+      produzido: acc.produzido + c.totaisMed.produzido,
+      aprovado: acc.aprovado + c.totaisMed.aprovado,
+      faturado: acc.faturado + c.totaisMed.faturado,
+      contestacao: acc.contestacao + c.totaisMed.contestacao,
+      prateleira: acc.prateleira + c.totaisMed.prateleira,
+      repasse: acc.repasse + c.totalRepasse,
+      adiantamentos: acc.adiantamentos + c.totalAdiantamentos,
     }),
-    { produzido: 0, aprovado: 0, faturado: 0, contestacao: 0, prateleira: 0, repasse: 0, repasse_liq: 0 }
+    { produzido: 0, aprovado: 0, faturado: 0, contestacao: 0, prateleira: 0, repasse: 0, adiantamentos: 0 }
   )
 
   return (
@@ -88,14 +115,15 @@ export default async function GestaoParceirosPage() {
         <p className="text-sm text-gray-500 mt-1">{contratos.length} contrato{contratos.length !== 1 ? 's' : ''} com parceiro</p>
       </div>
 
-      {/* Cards de totais consolidados */}
+      {/* Cards consolidados */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <Card icon={<TrendingUp className="w-4 h-4 text-gray-500" />} label="Produzido" value={fmt(grand.produzido)} />
         <Card icon={<DollarSign className="w-4 h-4 text-blue-500" />} label="Faturado" value={fmt(grand.faturado)} color="text-blue-700" />
         <Card icon={<AlertTriangle className="w-4 h-4 text-amber-500" />} label="Contestação" value={fmt(grand.contestacao)} color={grand.contestacao > 0 ? 'text-amber-700' : 'text-gray-400'} />
         <Card icon={<Clock className="w-4 h-4 text-yellow-500" />} label="Prateleira" value={fmt(grand.prateleira)} color={grand.prateleira > 0 ? 'text-yellow-700' : 'text-gray-400'} />
-        <Card icon={<DollarSign className="w-4 h-4 text-blue-400" />} label="Repasse bruto" value={fmt(grand.repasse)} color="text-blue-600" />
-        <Card icon={<DollarSign className="w-4 h-4 text-green-500" />} label="Repasse líquido" value={fmt(grand.repasse_liq)} color={grand.repasse_liq < 0 ? 'text-red-600' : 'text-green-700'} />
+        <Card icon={<DollarSign className="w-4 h-4 text-blue-400" />} label="Repasse total" value={fmt(grand.repasse)} color="text-blue-600" />
+        <Card icon={<DollarSign className="w-4 h-4 text-orange-400" />} label="Adiantamentos" value={fmt(grand.adiantamentos)} color="text-orange-600" />
+        <Card icon={<DollarSign className="w-4 h-4 text-green-500" />} label="Repasse líquido" value={fmt(grand.repasse - grand.adiantamentos)} color={(grand.repasse - grand.adiantamentos) < 0 ? 'text-red-600' : 'text-green-700'} />
       </div>
 
       {/* Tabela de contratos */}
@@ -104,72 +132,84 @@ export default async function GestaoParceirosPage() {
           Nenhum contrato com parceiro cadastrado
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr className="text-xs text-gray-500 font-medium uppercase tracking-wide">
-                  <th className="text-left px-4 py-3">Contrato</th>
-                  <th className="text-left px-4 py-3">Parceiro</th>
-                  <th className="text-center px-4 py-3">%</th>
-                  <th className="text-center px-4 py-3">Última comp.</th>
-                  <th className="text-right px-4 py-3">Produzido</th>
-                  <th className="text-right px-4 py-3 text-amber-600">Contest.</th>
-                  <th className="text-right px-4 py-3 text-yellow-600">Prateleira</th>
-                  <th className="text-right px-4 py-3">Faturado</th>
-                  <th className="text-right px-4 py-3 text-green-700">Rep. Líq.</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {contratos.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium text-gray-800">{c.name}</p>
-                        <p className="text-xs text-gray-400">{c.number} · {c.area.name}</p>
-                        <span className={`inline-flex text-xs font-medium px-1.5 py-0.5 rounded-full border mt-0.5 ${STATUS_COLORS[c.status] ?? 'text-gray-600 bg-gray-50 border-gray-200'}`}>
-                          {STATUS_LABELS[c.status] ?? c.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.partner ? (
-                        <div>
-                          <p className="text-gray-700">{c.partner.name}</p>
-                          {c.partner.contactName && <p className="text-xs text-gray-400">{c.partner.contactName}</p>}
+        <div className="space-y-4">
+          {contratos.map((c) => (
+            <div key={c.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {/* Header do contrato */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[c.status] ?? 'text-gray-600 bg-gray-50 border-gray-200'}`}>
+                      {STATUS_LABELS[c.status] ?? c.status}
+                    </span>
+                    <span className="text-xs text-gray-400 font-mono">{c.number}</span>
+                    <span className="text-xs text-gray-400">{c.area.name}</span>
+                    {c.ultimaMedicao && (
+                      <span className="text-xs text-gray-400">última comp: {fmtComp(c.ultimaMedicao.competenciaAno, c.ultimaMedicao.competenciaMes)}</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{c.name}</p>
+                </div>
+                <Link href={`/contratos/${c.id}`} className="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              {/* Medições resumidas */}
+              <div className="px-5 py-3 bg-gray-50/40 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                <Stat label="Produzido" value={fmt(c.totaisMed.produzido)} />
+                <Stat label="Contestação" value={c.totaisMed.contestacao > 0 ? fmt(c.totaisMed.contestacao) : '—'} color={c.totaisMed.contestacao > 0 ? 'text-amber-600 font-semibold' : 'text-gray-300'} />
+                <Stat label="Prateleira" value={c.totaisMed.prateleira > 0 ? fmt(c.totaisMed.prateleira) : '—'} color={c.totaisMed.prateleira > 0 ? 'text-yellow-600 font-semibold' : 'text-gray-300'} />
+                <Stat label="Faturado" value={fmt(c.totaisMed.faturado)} />
+                <Stat label="Medições" value={`${c.medicoes.length} comp.`} />
+              </div>
+
+              {/* Parceiros e instrumentos */}
+              <div className="divide-y divide-gray-50">
+                {c.parceiros.length === 0 && (
+                  <div className="px-5 py-3 text-xs text-gray-400 italic">Nenhum parceiro vinculado</div>
+                )}
+                {c.parceiros.map(({ cp, pct, repasse_bruto, instrumentos }) => {
+                  const somaFixos = instrumentos
+                    .filter((i) => i.tipo !== 'nota_debito')
+                    .reduce((s, i) => s + i.pctEfetivo, 0)
+
+                  return (
+                    <div key={cp.id} className="px-5 py-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-800">{cp.empresaParceira.name}</p>
+                            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{pct}%</span>
+                          </div>
+                          {cp.empresaParceira.cnpj && <p className="text-xs text-gray-400 mt-0.5">CNPJ: {cp.empresaParceira.cnpj}</p>}
+
+                          {/* Distribuição por instrumento */}
+                          {instrumentos.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {instrumentos.map((i) => (
+                                <div key={i.id} className="flex items-center gap-1.5 text-xs bg-gray-50 border border-gray-100 rounded-lg px-2 py-1">
+                                  <span className="text-gray-500">{TIPO_LABELS[i.tipo] ?? i.tipo}</span>
+                                  <span className="font-semibold text-gray-700">{i.pctEfetivo.toFixed(2)}%</span>
+                                  <span className="text-gray-400">→ {fmt(i.valorRepasse)}</span>
+                                  {i.tipo === 'nota_debito' && <span className="text-amber-500 italic text-xs">residual</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <Link href={`/contratos/${c.id}`} className="text-xs text-blue-500 hover:underline">Cadastrar parceiro</Link>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center font-medium text-gray-700">
-                      {c.partner ? `${c.partner.percentageGlobal}%` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-500 text-xs">
-                      {c.ultimaMedicao ? fmtComp(c.ultimaMedicao.competenciaAno, c.ultimaMedicao.competenciaMes) : <span className="text-gray-300">Sem medições</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-700">{fmt(c.totais.produzido)}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${c.totais.contestacao > 0 ? 'text-amber-600' : 'text-gray-300'}`}>
-                      {c.totais.contestacao > 0 ? fmt(c.totais.contestacao) : '—'}
-                    </td>
-                    <td className={`px-4 py-3 text-right font-medium ${c.totais.prateleira > 0 ? 'text-yellow-600' : 'text-gray-300'}`}>
-                      {c.totais.prateleira > 0 ? fmt(c.totais.prateleira) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-700">{fmt(c.totais.faturado)}</td>
-                    <td className={`px-4 py-3 text-right font-semibold ${c.totais.repasse_liq < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                      {fmt(c.totais.repasse_liq)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link href={`/contratos/${c.id}`} className="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 inline-flex">
-                        <ChevronRight className="w-4 h-4" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs text-gray-400">Repasse bruto</p>
+                          <p className="text-sm font-bold text-blue-700">{fmt(repasse_bruto)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -181,6 +221,15 @@ function Card({ icon, label, value, color = 'text-gray-800' }: { icon: React.Rea
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center gap-1.5 mb-1 text-gray-400 text-xs">{icon}{label}</div>
       <p className={`text-lg font-bold ${color}`}>{value}</p>
+    </div>
+  )
+}
+
+function Stat({ label, value, color = 'text-gray-700' }: { label: string; value: string; color?: string }) {
+  return (
+    <div>
+      <p className="text-gray-400 mb-0.5">{label}</p>
+      <p className={`font-medium ${color}`}>{value}</p>
     </div>
   )
 }

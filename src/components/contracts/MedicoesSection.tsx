@@ -24,10 +24,16 @@ interface Medicao {
   adiantamentos: Adiantamento[]
 }
 
+interface ContractPartnerSimple {
+  id: string
+  percentageTotal: number
+  empresaParceira: { name: string }
+}
+
 interface Props {
   contractId: string
   medicoes: Medicao[]
-  percentualParceiro: number
+  partners: ContractPartnerSimple[]
   canEdit: boolean
 }
 
@@ -37,7 +43,8 @@ const fmtCompetencia = (ano: number, mes: number) => `${MESES[mes - 1]}/${ano}`
 const EMPTY_FORM = { competenciaAno: new Date().getFullYear(), competenciaMes: new Date().getMonth() + 1, valorProduzido: '', valorAprovado: '', valorFaturado: '', observacoes: '' }
 const EMPTY_ADIANT = { valor: '', dataAdiantamento: new Date().toISOString().slice(0, 10), descricao: '' }
 
-export function MedicoesSection({ contractId, medicoes, percentualParceiro, canEdit }: Props) {
+export function MedicoesSection({ contractId, medicoes, partners, canEdit }: Props) {
+  const percentualTotal = partners.reduce((s, p) => s + p.percentageTotal, 0)
   const router = useRouter()
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -109,7 +116,7 @@ export function MedicoesSection({ contractId, medicoes, percentualParceiro, canE
   const totais = medicoes.reduce(
     (acc, m) => {
       const somaAdiant = m.adiantamentos.reduce((s, a) => s + a.valor, 0)
-      const repasse = (m.valorFaturado * percentualParceiro) / 100
+      const repasse = (m.valorFaturado * percentualTotal) / 100
       return {
         produzido: acc.produzido + m.valorProduzido,
         aprovado: acc.aprovado + m.valorAprovado,
@@ -198,7 +205,9 @@ export function MedicoesSection({ contractId, medicoes, percentualParceiro, canE
                   <th className="text-right pb-2 font-medium">Aprovado</th>
                   <th className="text-right pb-2 font-medium text-yellow-600">Prateleira</th>
                   <th className="text-right pb-2 font-medium">Faturado</th>
-                  <th className="text-right pb-2 font-medium text-blue-600">Repasse ({percentualParceiro}%)</th>
+                  <th className="text-right pb-2 font-medium text-blue-600">
+                    Repasse ({partners.length === 1 ? `${partners[0].percentageTotal}%` : `${percentualTotal}%`})
+                  </th>
                   <th className="text-right pb-2 font-medium">Adiantamentos</th>
                   <th className="text-right pb-2 font-medium text-green-700">Repasse Líq.</th>
                   <th className="pb-2 w-16"></th>
@@ -209,7 +218,7 @@ export function MedicoesSection({ contractId, medicoes, percentualParceiro, canE
                   const somaAdiant = m.adiantamentos.reduce((s, a) => s + a.valor, 0)
                   const contestacao = m.valorProduzido - m.valorAprovado
                   const prateleira = m.valorAprovado - m.valorFaturado
-                  const repasse = (m.valorFaturado * percentualParceiro) / 100
+                  const repasse = (m.valorFaturado * percentualTotal) / 100
                   const repasse_liq = repasse - somaAdiant
                   const isEditing = editingId === m.id
                   const isExpanded = expandedId === m.id
@@ -241,7 +250,7 @@ export function MedicoesSection({ contractId, medicoes, percentualParceiro, canE
                             <td className="py-2.5 pr-3 text-right text-gray-700">{fmt(m.valorAprovado)}</td>
                             <td className={`py-2.5 pr-3 text-right font-medium ${prateleira > 0 ? 'text-yellow-600' : 'text-gray-300'}`}>{prateleira > 0 ? fmt(prateleira) : '—'}</td>
                             <td className="py-2.5 pr-3 text-right text-gray-700">{fmt(m.valorFaturado)}</td>
-                            <td className="py-2.5 pr-3 text-right text-blue-600 font-medium">{fmt(repasse)}</td>
+                            <td className="py-2.5 pr-3 text-right text-blue-600 font-medium" title={partners.map(p => `${p.empresaParceira.name}: ${p.percentageTotal}%`).join(' + ')}>{fmt(repasse)}</td>
                             <td className="py-2.5 pr-3 text-right text-gray-500">{somaAdiant > 0 ? fmt(somaAdiant) : '—'}</td>
                             <td className={`py-2.5 pr-3 text-right font-semibold ${repasse_liq < 0 ? 'text-red-600' : 'text-green-700'}`}>{fmt(repasse_liq)}</td>
                             <td className="py-2.5">
