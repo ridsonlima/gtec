@@ -54,7 +54,7 @@ async function main() {
     }),
     prisma.area.create({
       data: {
-        name: 'Obras Terceirizadas',
+        name: 'Parceiros',
         code: 'OBRAS_TERC',
         isOperational: true,
         description: 'Fiscalização e gestão de contratos terceirizados',
@@ -157,7 +157,7 @@ async function main() {
     data: [
       // João → Obras Próprias (primário, escrita)
       { userId: joao.id, areaId: areaObrasProp.id, canWrite: true, isPrimary: true },
-      // Ana → Obras Terceirizadas (primário, escrita)
+      // Ana → Parceiros (primário, escrita)
       { userId: ana.id, areaId: areaObrasTerc.id, canWrite: true, isPrimary: true },
       // Carlos → SESMT (primário, escrita)
       { userId: carlos.id, areaId: areaSesmt.id, canWrite: true, isPrimary: true },
@@ -300,13 +300,13 @@ async function main() {
     },
   })
 
-  // Report 3 — Obras Terceirizadas, desatualizado (8 dias atrás)
+  // Report 3 — Parceiros, desatualizado (8 dias atrás)
   const report3 = await prisma.report.create({
     data: {
       areaId: areaObrasTerc.id,
       contractId: cPmc023.id,
       authorId: ana.id,
-      title: 'Semana 18/2026 — Obras Terceirizadas',
+      title: 'Semana 18/2026 — Parceiros',
       period: 'Semana 18/2026',
       status: 'published',
       executiveSummary: 'Semana difícil no contrato PMC-023. Contratada operando com equipe reduzida. Atraso de 18 dias acumulado.',
@@ -560,7 +560,7 @@ async function main() {
     },
   })
 
-  // Comentário no relatório de Obras Terceirizadas
+  // Comentário no relatório de Parceiros
   const com3 = await prisma.comment.create({
     data: {
       objectType: 'report',
@@ -757,7 +757,7 @@ async function main() {
   console.log('═══════════════════════════════════════════')
   console.log('  ridsonlima@gmail.com     → Diretor Técnico')
   console.log('  joao.ferreira@empresa.com → Gestor — Obras Próprias')
-  console.log('  ana.costa@empresa.com     → Gestor — Obras Terceirizadas')
+  console.log('  ana.costa@empresa.com     → Gestor — Parceiros')
   console.log('  carlos.silva@empresa.com  → Supervisor — SESMT')
   console.log('  marcos.pereira@empresa.com→ Gestor — Planejamento')
   console.log('  lucia.ramos@empresa.com   → Supervisor — Equipamentos')

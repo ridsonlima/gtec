@@ -114,6 +114,7 @@ model Contract {
   physicalProgress   Float?   @map("physical_progress")
   financialProgress  Float?   @map("financial_progress")
   riskNotes          String?  @map("risk_notes")
+  executionModality  String   @default("own_crew") @map("execution_modality")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
@@ -123,6 +124,8 @@ model Contract {
   demands          Demand[]
   attachments      Attachment[]      @relation("ContractAttachments")
   evidenceRequests EvidenceRequest[] @relation("ContractEvidence")
+  partner          Partner?
+  contractors      Contractor[]
 
   @@map("contracts")
 }
@@ -496,6 +499,44 @@ model Mention {
   @@unique([commentId, userId])
   @@index([userId])
   @@map("mentions")
+}
+
+// ─── PARTNER ─────────────────────────────────────────────────────────────────
+
+model Partner {
+  id               String   @id @default(uuid())
+  contractId       String   @unique @map("contract_id")
+  name             String
+  cnpj             String?
+  contactName      String?  @map("contact_name")
+  contactPhone     String?  @map("contact_phone")
+  percentageGlobal Float    @map("percentage_global")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("partners")
+}
+
+// ─── CONTRACTOR (EMPREITEIRO) ─────────────────────────────────────────────────
+
+model Contractor {
+  id                  String   @id @default(uuid())
+  contractId          String   @map("contract_id")
+  name                String
+  cnpj                String?
+  contactName         String?  @map("contact_name")
+  contactPhone        String?  @map("contact_phone")
+  serviceDescription  String   @map("service_description")
+  contractedValue     Float    @map("contracted_value")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@map("contractors")
 }
 
 // ─── AUDIT LOGS ──────────────────────────────────────────────────────────────

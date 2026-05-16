@@ -17,6 +17,7 @@ export default function NewContractPage() {
   const [form, setForm] = useState({
     areaId: preAreaId, responsibleId: '', number: '', name: '', client: '', contractType: '', object: '',
     estimatedValue: '', executionDays: '', startDate: new Date().toISOString().slice(0, 10), status: 'active',
+    executionModality: 'own_crew',
   })
 
   const { data: areasData } = useQuery({ queryKey: ['areas'], queryFn: () => fetch('/api/areas').then((r) => r.json()) })
@@ -67,6 +68,13 @@ export default function NewContractPage() {
           <Field label="Valor global"><input type="number" min="0" step="0.01" value={form.estimatedValue} onChange={set('estimatedValue')} className="input" placeholder="0,00" /></Field>
           <Field label="Inicio"><input type="date" value={form.startDate} onChange={set('startDate')} className="input" /></Field>
           <Field label="Prazo de execucao (dias)"><input required type="number" min="1" value={form.executionDays} onChange={set('executionDays')} className="input" /></Field>
+          <Field label="Modalidade de execucao">
+            <select value={form.executionModality} onChange={set('executionModality')} className="input">
+              <option value="own_crew">Equipe propria</option>
+              <option value="partner">Parceiro (% global)</option>
+              <option value="contractor">Empreiteiro (servico especifico)</option>
+            </select>
+          </Field>
         </div>
         <Field label="Nome resumido"><input required value={form.name} onChange={set('name')} className="input" placeholder="Nome para localizar o contrato" /></Field>
         <Field label="Objeto"><textarea required value={form.object} onChange={set('object')} className="input min-h-28" placeholder="Descreva o objeto contratado" /></Field>

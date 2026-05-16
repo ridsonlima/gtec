@@ -13,7 +13,7 @@ import { getRoleLabel } from '@/lib/role-labels'
 const AREAS = [
   { name: 'Planejamento', href: '/areas/planejamento', code: 'PLAN' },
   { name: 'Obras Próprias', href: '/areas/obras-proprias', code: 'OBRAS_PROP' },
-  { name: 'Obras Terceirizadas', href: '/areas/obras-terceirizadas', code: 'OBRAS_TERC' },
+  { name: 'Parceiros', href: '/areas/obras-terceirizadas', code: 'OBRAS_TERC' },
   { name: 'SESMT e Logística', href: '/areas/sesmt', code: 'SESMT' },
   { name: 'Equip. e Almoxarifado', href: '/areas/equipamentos', code: 'EQUIP' },
 ]
