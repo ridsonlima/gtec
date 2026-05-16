@@ -56,6 +56,8 @@ model User {
   demandCollaborations      DemandCollaborator[]  @relation("DemandCollaborators")
   demandCollaborationsAdded DemandCollaborator[]  @relation("DemandCollaboratorAdder")
   mentions                  Mention[]
+  medicoesCriadas           Medicao[]
+  adiantamentosCriados      Adiantamento[]
 
   @@map("users")
 }
@@ -126,6 +128,7 @@ model Contract {
   evidenceRequests EvidenceRequest[] @relation("ContractEvidence")
   partner          Partner?
   contractors      Contractor[]
+  medicoes         Medicao[]
 
   @@map("contracts")
 }
@@ -499,6 +502,46 @@ model Mention {
   @@unique([commentId, userId])
   @@index([userId])
   @@map("mentions")
+}
+
+// ─── MEDICAO ─────────────────────────────────────────────────────────────────
+
+model Medicao {
+  id               String   @id @default(uuid())
+  contractId       String   @map("contract_id")
+  competenciaAno   Int      @map("competencia_ano")
+  competenciaMes   Int      @map("competencia_mes")
+  valorProduzido   Float    @map("valor_produzido")
+  valorAprovado    Float    @map("valor_aprovado")
+  valorFaturado    Float    @map("valor_faturado")
+  observacoes      String?
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  contract      Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation(fields: [createdById], references: [id])
+  adiantamentos Adiantamento[]
+
+  @@unique([contractId, competenciaAno, competenciaMes])
+  @@index([contractId])
+  @@map("medicoes")
+}
+
+model Adiantamento {
+  id                String   @id @default(uuid())
+  medicaoId         String   @map("medicao_id")
+  valor             Float
+  dataAdiantamento  DateTime @map("data_adiantamento")
+  descricao         String?
+  createdById       String   @map("created_by_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  medicao   Medicao @relation(fields: [medicaoId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@index([medicaoId])
+  @@map("adiantamentos")
 }
 
 // ─── PARTNER ─────────────────────────────────────────────────────────────────

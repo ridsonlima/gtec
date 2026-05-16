@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, BarChart2, LayoutGrid, Activity, FileBarChart } from 'lucide-react'
+import { LayoutDashboard, Layers, FileText, Building2, Users, Settings, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, BarChart2, LayoutGrid, Activity, FileBarChart, Handshake } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CDGLogo } from './CDGLogo'
@@ -13,10 +13,11 @@ import { getRoleLabel } from '@/lib/role-labels'
 const AREAS = [
   { name: 'Planejamento', href: '/areas/planejamento', code: 'PLAN' },
   { name: 'Obras Próprias', href: '/areas/obras-proprias', code: 'OBRAS_PROP' },
-  { name: 'Parceiros', href: '/areas/obras-terceirizadas', code: 'OBRAS_TERC' },
   { name: 'SESMT e Logística', href: '/areas/sesmt', code: 'SESMT' },
   { name: 'Equip. e Almoxarifado', href: '/areas/equipamentos', code: 'EQUIP' },
 ]
+
+const AREA_PARCEIROS = { name: 'Parceiros', href: '/areas/obras-terceirizadas', code: 'OBRAS_TERC' }
 
 interface SidebarProps {
   session: Session
@@ -26,6 +27,7 @@ interface SidebarProps {
 export function Sidebar({ session, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [areasOpen, setAreasOpen] = useState(true)
+  const [parceirosOpen, setParceirosOpen] = useState(false)
   const { role } = session.user
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const isLeadership = role === 'master' || role === 'director' || role === 'admin'
@@ -59,6 +61,26 @@ export function Sidebar({ session, onClose }: SidebarProps) {
                   {area.name}
                 </Link>
               ))}
+              <div>
+                <button
+                  onClick={() => setParceirosOpen(!parceirosOpen)}
+                  className={cn('w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive(AREA_PARCEIROS.href) || isActive('/gestao-parceiros') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}
+                >
+                  <span className="flex-1 text-left">{AREA_PARCEIROS.name}</span>
+                  {parceirosOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                </button>
+                {parceirosOpen && (
+                  <div className="ml-4 mt-0.5 space-y-0.5">
+                    <Link href={AREA_PARCEIROS.href} className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive(AREA_PARCEIROS.href) ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
+                      Visão geral
+                    </Link>
+                    <Link href="/gestao-parceiros" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/gestao-parceiros') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
+                      <Handshake className="w-3 h-3" />
+                      Gestão de Parceiros
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

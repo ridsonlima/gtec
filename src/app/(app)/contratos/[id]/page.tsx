@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ContractDeleteButton } from '@/components/contracts/ContractDeleteButton'
 import { PartnerSection } from '@/components/contracts/PartnerSection'
 import { ContractorsSection } from '@/components/contracts/ContractorsSection'
+import { MedicoesSection } from '@/components/contracts/MedicoesSection'
 import { ChevronLeft, Briefcase, Calendar, DollarSign, FileText, AlertTriangle, User } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -37,6 +38,10 @@ export default async function ContractDetailPage({ params }: { params: { id: str
       responsible: { select: { id: true, name: true } },
       partner: true,
       contractors: { orderBy: { createdAt: 'asc' } },
+      medicoes: {
+        orderBy: [{ competenciaAno: 'asc' }, { competenciaMes: 'asc' }],
+        include: { adiantamentos: { orderBy: { dataAdiantamento: 'asc' } } },
+      },
       reports: {
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -114,6 +119,14 @@ export default async function ContractDetailPage({ params }: { params: { id: str
       )}
       {contract.executionModality === 'contractor' && (
         <ContractorsSection contractId={contract.id} contractors={contract.contractors} canEdit={canEdit} />
+      )}
+      {contract.executionModality === 'partner' && (
+        <MedicoesSection
+          contractId={contract.id}
+          medicoes={contract.medicoes as any}
+          percentualParceiro={contract.partner?.percentageGlobal ?? 0}
+          canEdit={canEdit}
+        />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
