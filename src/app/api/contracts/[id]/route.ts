@@ -6,32 +6,28 @@ import { canAccessArea } from '@/lib/permissions'
 
 function buildContractData(body: any) {
   const startDate = body.startDate ? new Date(body.startDate) : null
-  const executionDays = Number(body.executionDays || 0)
-  const endDate = body.endDate
-    ? new Date(body.endDate)
-    : startDate && executionDays > 0
-    ? new Date(startDate.getTime() + executionDays * 24 * 60 * 60 * 1000)
-    : null
-  const riskNotes = [
-    body.contractType ? `Tipo de contrato: ${body.contractType}` : null,
-    executionDays > 0 ? `Prazo de execucao: ${executionDays} dias` : null,
-    body.riskNotes || null,
-  ].filter(Boolean).join('\n') || null
+  const endDate = body.endDate ? new Date(body.endDate) : null
+  const proposalDate = body.proposalDate ? new Date(body.proposalDate) : null
 
   return {
     areaId: body.areaId,
     number: body.number,
     name: body.name,
     client: body.client,
+    contractType: body.contractType || null,
     description: body.object || body.description || null,
     estimatedValue: body.estimatedValue ? Number(body.estimatedValue) : null,
     startDate,
     endDate,
     responsibleId: body.responsibleId || null,
     status: body.status || 'active',
+    executionModality: body.executionModality || undefined,
     physicalProgress: body.physicalProgress === '' || body.physicalProgress == null ? null : Number(body.physicalProgress),
     financialProgress: body.financialProgress === '' || body.financialProgress == null ? null : Number(body.financialProgress),
-    riskNotes,
+    riskNotes: body.riskNotes || null,
+    proposalDate,
+    readjustmentCount: body.readjustmentCount != null && body.readjustmentCount !== '' ? Number(body.readjustmentCount) : undefined,
+    readjustmentIndex: body.readjustmentIndex || null,
   }
 }
 

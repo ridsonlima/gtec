@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ChevronLeft, Save } from 'lucide-react'
 
 const CONTRACT_TYPES = ['Empreitada global', 'Preco unitario', 'Manutencao', 'Servico tecnico', 'Fornecimento', 'Outro']
+const READJUSTMENT_INDEXES = ['INPC', 'IPCA', 'IGP-M', 'IGP-DI', 'IPC-A', 'SINAPI', 'Outro']
 
 export default function NewContractPage() {
   const router = useRouter()
@@ -16,8 +17,9 @@ export default function NewContractPage() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     areaId: preAreaId, responsibleId: '', number: '', name: '', client: '', contractType: '', object: '',
-    estimatedValue: '', executionDays: '', startDate: new Date().toISOString().slice(0, 10), status: 'active',
+    estimatedValue: '', executionDays: '', startDate: new Date().toISOString().slice(0, 10),
     executionModality: 'own_crew',
+    proposalDate: '', readjustmentCount: '0', readjustmentIndex: '',
   })
 
   const { data: areasData } = useQuery({ queryKey: ['areas'], queryFn: () => fetch('/api/areas').then((r) => r.json()) })
@@ -74,6 +76,18 @@ export default function NewContractPage() {
               <option value="partner">Parceiro (% global)</option>
               <option value="contractor">Empreiteiro (servico especifico)</option>
             </select>
+          </Field>
+          <Field label="Data da proposta">
+            <input type="date" value={form.proposalDate} onChange={set('proposalDate')} className="input" />
+          </Field>
+          <Field label="Índice de reajuste">
+            <select value={form.readjustmentIndex} onChange={set('readjustmentIndex')} className="input">
+              <option value="">Não definido</option>
+              {READJUSTMENT_INDEXES.map((i) => <option key={i}>{i}</option>)}
+            </select>
+          </Field>
+          <Field label="Reajustes aplicados">
+            <input type="number" min="0" value={form.readjustmentCount} onChange={set('readjustmentCount')} className="input" placeholder="0" />
           </Field>
         </div>
         <Field label="Nome resumido"><input required value={form.name} onChange={set('name')} className="input" placeholder="Nome para localizar o contrato" /></Field>

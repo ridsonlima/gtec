@@ -135,6 +135,10 @@ model Contract {
   financialProgress  Float?   @map("financial_progress")
   riskNotes          String?  @map("risk_notes")
   executionModality  String   @default("own_crew") @map("execution_modality")
+  // ─── Reajuste ────────────────────────────────────────────────────────────
+  proposalDate       DateTime? @map("proposal_date")
+  readjustmentCount  Int       @default(0) @map("readjustment_count")
+  readjustmentIndex  String?   @map("readjustment_index")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 

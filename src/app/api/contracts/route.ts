@@ -66,11 +66,6 @@ export async function POST(req: NextRequest) {
     : executionDays > 0
     ? new Date(startDate.getTime() + executionDays * 24 * 60 * 60 * 1000)
     : null
-  const notes = [
-    body.contractType ? `Tipo de contrato: ${body.contractType}` : null,
-    executionDays > 0 ? `Prazo de execucao: ${executionDays} dias` : null,
-    body.riskNotes || null,
-  ].filter(Boolean).join('\n') || null
 
   const contract = await prisma.contract.create({
     data: {
@@ -78,13 +73,18 @@ export async function POST(req: NextRequest) {
       number: body.number,
       name: body.name,
       client: body.client,
+      contractType: body.contractType || null,
       description: body.object || body.description,
       estimatedValue: body.estimatedValue ? Number(body.estimatedValue) : null,
       startDate,
       endDate,
-      responsibleId: body.responsibleId,
-      status: body.status ?? 'active',
-      riskNotes: notes,
+      responsibleId: body.responsibleId || null,
+      status: 'active',
+      executionModality: body.executionModality ?? 'own_crew',
+      riskNotes: body.riskNotes || null,
+      proposalDate: body.proposalDate ? new Date(body.proposalDate) : null,
+      readjustmentCount: body.readjustmentCount ? Number(body.readjustmentCount) : 0,
+      readjustmentIndex: body.readjustmentIndex || null,
     },
   })
 

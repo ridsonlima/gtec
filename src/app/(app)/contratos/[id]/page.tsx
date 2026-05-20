@@ -9,7 +9,8 @@ import { ContractDeleteButton } from '@/components/contracts/ContractDeleteButto
 import { ContractPartnersSection } from '@/components/contracts/ContractPartnersSection'
 import { ContractorsSection } from '@/components/contracts/ContractorsSection'
 import { MedicoesSection } from '@/components/contracts/MedicoesSection'
-import { ChevronLeft, Briefcase, Calendar, DollarSign, FileText, AlertTriangle, User } from 'lucide-react'
+import { FechamentoMensalSection } from '@/components/contracts/FechamentoMensalSection'
+import { ChevronLeft, Briefcase, Calendar, DollarSign, FileText, AlertTriangle, User, RefreshCw, TrendingUp } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Ativo',
@@ -40,8 +41,20 @@ export default async function ContractDetailPage({ params }: { params: { id: str
         include: {
           empresaParceira: true,
           instrumentos: { orderBy: { createdAt: 'asc' } },
+          itensLocacao: { orderBy: { createdAt: 'asc' } },
         },
         orderBy: { createdAt: 'asc' },
+      },
+      fechamentosMensais: {
+        orderBy: [{ competenciaAno: 'desc' }, { competenciaMes: 'desc' }],
+        include: {
+          createdBy: { select: { id: true, name: true } },
+          transacoes: {
+            include: { createdBy: { select: { id: true, name: true } } },
+            orderBy: [{ hipotese: 'asc' }, { createdAt: 'asc' }],
+          },
+          usosItens: { include: { itemLocacao: true } },
+        },
       },
       contractors: { orderBy: { createdAt: 'asc' } },
       medicoes: {
@@ -69,6 +82,20 @@ export default async function ContractDetailPage({ params }: { params: { id: str
   const canEdit = ['master', 'admin', 'director'].includes(session.user.role)
   const formatCurrency = (val: number | null) => val == null ? '-' : val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const daysRemaining = contract.endDate ? Math.ceil((new Date(contract.endDate).getTime() - Date.now()) / 86400000) : null
+
+  // Cálculo do próximo aniversário de reajuste
+  const nextReadjustmentDate = contract.proposalDate
+    ? (() => {
+        const base = new Date(contract.proposalDate)
+        const next = new Date(base)
+        next.setFullYear(base.getFullYear() + contract.readjustmentCount + 1)
+        return next
+      })()
+    : null
+  const daysToReadjustment = nextReadjustmentDate
+    ? Math.ceil((nextReadjustmentDate.getTime() - Date.now()) / 86400000)
+    : null
+  const readjustmentDue = daysToReadjustment != null && daysToReadjustment <= 30
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -103,6 +130,26 @@ export default async function ContractDetailPage({ params }: { params: { id: str
           {contract.estimatedValue != null && <Info icon={<DollarSign className="w-3.5 h-3.5" />} label="Valor" value={formatCurrency(contract.estimatedValue)} />}
           {contract.startDate && <Info icon={<Calendar className="w-3.5 h-3.5" />} label="Inicio" value={formatDate(contract.startDate)} />}
           {contract.endDate && <Info icon={<Calendar className="w-3.5 h-3.5" />} label="Termino" value={`${formatDate(contract.endDate)}${daysRemaining != null ? (daysRemaining > 0 ? ` (${daysRemaining}d restantes)` : ' (vencido)') : ''}`} />}
+          {contract.proposalDate && <Info icon={<FileText className="w-3.5 h-3.5" />} label="Data da proposta" value={formatDate(contract.proposalDate)} />}
+          {contract.readjustmentIndex && <Info icon={<TrendingUp className="w-3.5 h-3.5" />} label="Índice de reajuste" value={contract.readjustmentIndex} />}
+          <Info
+            icon={<RefreshCw className="w-3.5 h-3.5" />}
+            label="Reajustes aplicados"
+            value={`${contract.readjustmentCount} reajuste${contract.readjustmentCount !== 1 ? 's' : ''}`}
+          />
+          {nextReadjustmentDate && (
+            <InfoHighlight
+              icon={<Calendar className="w-3.5 h-3.5" />}
+              label="Próximo reajuste"
+              value={formatDate(nextReadjustmentDate)}
+              note={daysToReadjustment != null
+                ? daysToReadjustment > 0
+                  ? `em ${daysToReadjustment}d`
+                  : 'vencido'
+                : undefined}
+              alert={readjustmentDue}
+            />
+          )}
         </div>
 
         {(contract.physicalProgress != null || contract.financialProgress != null) && (
@@ -138,6 +185,21 @@ export default async function ContractDetailPage({ params }: { params: { id: str
           canEdit={canEdit}
         />
       )}
+
+      {contract.executionModality === 'partner' && (() => {
+        const empresaA = contract.contractPartners.find((cp) => cp.empresaParceira.tipo === 'empresa_a')
+        const empresaB = contract.contractPartners.find((cp) => cp.empresaParceira.tipo === 'empresa_b')
+        const itensLocacao = (empresaB as any)?.itensLocacao ?? []
+        return (
+          <FechamentoMensalSection
+            contractId={contract.id}
+            fechamentos={contract.fechamentosMensais as any}
+            percentualAdm={empresaA?.percentualAdministracao ?? null}
+            itensLocacao={itensLocacao}
+            canEdit={canEdit}
+          />
+        )
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
@@ -186,6 +248,20 @@ export default async function ContractDetailPage({ params }: { params: { id: str
 
 function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return <div><p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">{icon} {label}</p><p className="text-sm font-medium text-gray-800">{value}</p></div>
+}
+
+function InfoHighlight({ icon, label, value, note, alert }: {
+  icon: React.ReactNode; label: string; value: string; note?: string; alert?: boolean
+}) {
+  return (
+    <div className={alert ? 'rounded-lg px-2 py-1.5 -mx-2 bg-amber-50 border border-amber-200' : ''}>
+      <p className={`text-xs flex items-center gap-1 mb-0.5 ${alert ? 'text-amber-600' : 'text-gray-400'}`}>{icon} {label}</p>
+      <p className={`text-sm font-medium ${alert ? 'text-amber-700' : 'text-gray-800'}`}>
+        {value}
+        {note && <span className={`ml-1.5 text-xs font-normal ${alert ? 'text-amber-500' : 'text-gray-400'}`}>({note})</span>}
+      </p>
+    </div>
+  )
 }
 
 function Progress({ label, value, color }: { label: string; value: number; color: string }) {
