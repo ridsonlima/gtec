@@ -53,11 +53,24 @@ model User {
   contractsOwned            Contract[]
   agendasCreated            MeetingAgenda[]
   projectsOwned             Project[]             @relation("ProjectResponsible")
-  demandCollaborations      DemandCollaborator[]  @relation("DemandCollaborators")
-  demandCollaborationsAdded DemandCollaborator[]  @relation("DemandCollaboratorAdder")
+  demandCollaborations      DemandCollaborator[]       @relation("DemandCollaborators")
+  demandCollaborationsAdded DemandCollaborator[]       @relation("DemandCollaboratorAdder")
+  deadlineRequestsMade      DeadlineExtensionRequest[] @relation("DeadlineRequestedBy")
+  deadlineRequestsReviewed  DeadlineExtensionRequest[] @relation("DeadlineReviewedBy")
+  demandUpdateViews         DemandUpdateView[]
   mentions                  Mention[]
+  demandChecklistItems      DemandChecklistItem[]
   medicoesCriadas           Medicao[]
   adiantamentosCriados      Adiantamento[]
+  fechamentosCreados        FechamentoMensal[]    @relation("FechamentosCreados")
+  transacoesCriadas         Transacao[]           @relation("TransacoesCriadas")
+  alocacoesCreadas          AlocacaoAtivo[]       @relation("AlocacoesCreadas")
+  medicoesLocacaoCriadas    MedicaoLocacao[]      @relation("MedicoesLocacaoCriadas")
+  medicoesLocacaoAprovadas  MedicaoLocacao[]      @relation("MedicoesAprovadas")
+  medicoesConferidas        MedicaoLocacao[]      @relation("MedicoesConferidas")
+  auditoriasRealizadas      AuditoriaVisita[]     @relation("AuditoriasRealizadas")
+  pendenciasResponsavel     PendenciaAuditoria[]  @relation("PendenciasResponsavel")
+  ordensServicoCriadas      OrdemServico[]        @relation("OrdensServicoCriadas")
 
   @@map("users")
 }
@@ -82,20 +95,24 @@ model UserAreaScope {
 
 model Area {
   id            String   @id @default(uuid())
-  name          String   
-  code          String   @unique 
+  name          String
+  code          String   @unique
+  parentId      String?  @map("parent_id")
   isOperational Boolean  @default(false) @map("is_operational")
   isActive      Boolean  @default(true) @map("is_active")
-  description   String? 
+  description   String?
   sortOrder     Int      @default(0) @map("sort_order")
   createdAt     DateTime @default(now()) @map("created_at")
 
+  parent           Area?           @relation("AreaChildren", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children         Area[]          @relation("AreaChildren")
   userScopes       UserAreaScope[]
   reports          Report[]
   contracts        Contract[]
   demands          Demand[]
   requestedDemands Demand[]        @relation("DemandRequestingArea")
 
+  @@index([parentId])
   @@map("areas")
 }
 
@@ -112,6 +129,7 @@ model Contract {
   startDate      DateTime?      @map("start_date")
   endDate        DateTime?      @map("end_date")
   responsibleId      String?  @map("responsible_id")
+  contractType       String?  @map("contract_type")
   status             String   @default("active")
   physicalProgress   Float?   @map("physical_progress")
   financialProgress  Float?   @map("financial_progress")
@@ -120,15 +138,19 @@ model Contract {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  area             Area              @relation(fields: [areaId], references: [id])
-  responsible      User?             @relation(fields: [responsibleId], references: [id])
-  reports          Report[]
-  demands          Demand[]
-  attachments      Attachment[]      @relation("ContractAttachments")
-  evidenceRequests EvidenceRequest[] @relation("ContractEvidence")
-  contractPartners ContractPartner[]
-  contractors      Contractor[]
-  medicoes         Medicao[]
+  area               Area               @relation(fields: [areaId], references: [id])
+  responsible        User?              @relation(fields: [responsibleId], references: [id])
+  reports            Report[]
+  demands            Demand[]
+  attachments        Attachment[]       @relation("ContractAttachments")
+  evidenceRequests   EvidenceRequest[]  @relation("ContractEvidence")
+  contractPartners   ContractPartner[]
+  contractors        Contractor[]
+  medicoes           Medicao[]
+  fechamentosMensais FechamentoMensal[]
+  alocacoesAtivos    AlocacaoAtivo[]
+  medicoesLocacao    MedicaoLocacao[]   @relation("MedicoesLocacao")
+  auditoriasVisita   AuditoriaVisita[]  @relation("AuditoriasContrato")
 
   @@map("contracts")
 }
@@ -234,11 +256,13 @@ model Demand {
   acceptedBy       User?               @relation("DemandAccepted", fields: [acceptedById], references: [id])
   rejectedBy       User?               @relation("DemandRejected", fields: [rejectedById], references: [id])
   updates          DemandUpdate[]
+  checklistItems   DemandChecklistItem[]
   comments         Comment[]           @relation("DemandComments")
   attachments      Attachment[]        @relation("DemandAttachments")
   evidenceRequests EvidenceRequest[]   @relation("DemandEvidence")
   agendaItems      AgendaItem[]        @relation("DemandAgenda")
-  collaborators    DemandCollaborator[]
+  collaborators      DemandCollaborator[]
+  deadlineRequests   DeadlineExtensionRequest[]
 
   @@index([areaId, status])
   @@index([requestingAreaId])
@@ -249,6 +273,26 @@ model Demand {
   @@index([dueDate, status])
   @@index([responsibleId])
   @@map("demands")
+}
+
+// ─── DEMAND CHECKLIST ────────────────────────────────────────────────────────
+
+model DemandChecklistItem {
+  id          String    @id @default(uuid())
+  demandId    String    @map("demand_id")
+  title       String
+  description String?
+  dueDate     DateTime? @map("due_date")
+  isCompleted Boolean   @default(false) @map("is_completed")
+  completedAt DateTime? @map("completed_at")
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  demand      Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  @@index([demandId])
+  @@map("demand_checklist_items")
 }
 
 // ─── DEMAND UPDATES ───────────────────────────────────────────────────────────
@@ -262,11 +306,25 @@ model DemandUpdate {
   statusAfter  String? @map("status_after")
   createdAt    DateTime      @default(now()) @map("created_at")
 
-  demand Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id])
+  demand Demand            @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  author User              @relation(fields: [authorId], references: [id])
+  views  DemandUpdateView[]
 
   @@index([demandId])
   @@map("demand_updates")
+}
+
+model DemandUpdateView {
+  updateId String   @map("update_id")
+  userId   String   @map("user_id")
+  seenAt   DateTime @default(now()) @map("seen_at")
+
+  update DemandUpdate @relation(fields: [updateId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([updateId, userId])
+  @@index([userId])
+  @@map("demand_update_views")
 }
 
 // ─── COMMENTS ────────────────────────────────────────────────────────────────
@@ -371,6 +429,9 @@ model Project {
   milestones  ProjectMilestone[]
   updates     ProjectUpdate[]
   demands     Demand[]
+  alocacoes   AlocacaoAtivo[]
+  medicaoItens MedicaoLocacaoItem[] @relation("ItensLocacaoProjeto")
+  auditoriasVisita AuditoriaVisita[] @relation("AuditoriasVisita")
 
   @@map("projects")
 }
@@ -488,6 +549,30 @@ model DemandCollaborator {
   @@map("demand_collaborators")
 }
 
+// ─── DEADLINE EXTENSION REQUESTS ─────────────────────────────────────────────
+
+model DeadlineExtensionRequest {
+  id            String    @id @default(uuid())
+  demandId      String    @map("demand_id")
+  requestedById String    @map("requested_by_id")
+  proposedDate  DateTime  @map("proposed_date")
+  justification String
+  status        String    @default("pending") // pending | approved | rejected
+  reviewedById  String?   @map("reviewed_by_id")
+  reviewedAt    DateTime? @map("reviewed_at")
+  reviewNote    String?   @map("review_note")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  demand      Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  requestedBy User   @relation("DeadlineRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy  User?  @relation("DeadlineReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([demandId])
+  @@index([requestedById])
+  @@index([status])
+  @@map("deadline_extension_requests")
+}
+
 // ─── MENTIONS ────────────────────────────────────────────────────────────────
 
 model Mention {
@@ -507,24 +592,29 @@ model Mention {
 // ─── MEDICAO ─────────────────────────────────────────────────────────────────
 
 model Medicao {
-  id               String   @id @default(uuid())
-  contractId       String   @map("contract_id")
-  competenciaAno   Int      @map("competencia_ano")
-  competenciaMes   Int      @map("competencia_mes")
-  valorProduzido   Float    @map("valor_produzido")
-  valorAprovado    Float    @map("valor_aprovado")
-  valorFaturado    Float    @map("valor_faturado")
-  observacoes      String?
-  createdById      String   @map("created_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  contractId          String   @map("contract_id")
+  contractPartnerId   String?  @map("contract_partner_id")
+  competenciaAno      Int      @map("competencia_ano")
+  competenciaMes      Int      @map("competencia_mes")
+  valorProduzido      Float    @map("valor_produzido")
+  valorAprovado       Float    @map("valor_aprovado")
+  valorFaturado       Float    @map("valor_faturado")
+  folhaPagamento      Float?   @map("folha_pagamento")
+  materiaisDiretosCDG Float?   @map("materiais_diretos_cdg")
+  observacoes         String?
+  createdById         String   @map("created_by_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
-  contract      Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  createdBy     User           @relation(fields: [createdById], references: [id])
-  adiantamentos Adiantamento[]
+  contract        Contract         @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contractPartner ContractPartner? @relation(fields: [contractPartnerId], references: [id])
+  createdBy       User             @relation(fields: [createdById], references: [id])
+  adiantamentos   Adiantamento[]
 
-  @@unique([contractId, competenciaAno, competenciaMes])
+  @@unique([contractId, contractPartnerId, competenciaAno, competenciaMes])
   @@index([contractId])
+  @@index([contractPartnerId])
   @@map("medicoes")
 }
 
@@ -552,6 +642,7 @@ model EmpresaParceira {
   cnpj         String?  @unique
   contactName  String?  @map("contact_name")
   contactPhone String?  @map("contact_phone")
+  tipo         String   @default("terceiro") // empresa_a | empresa_b | terceiro
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -564,20 +655,130 @@ model EmpresaParceira {
 // ─── CONTRACT PARTNER (vínculo contrato ↔ empresa parceira) ──────────────────
 
 model ContractPartner {
-  id                String   @id @default(uuid())
-  contractId        String   @map("contract_id")
-  empresaParceiraId String   @map("empresa_parceira_id")
-  percentageTotal   Float    @map("percentage_total")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id                       String   @id @default(uuid())
+  contractId               String   @map("contract_id")
+  empresaParceiraId        String   @map("empresa_parceira_id")
+  percentageTotal          Float    @map("percentage_total")
+  percentualAdministracao  Float?   @map("percentual_administracao")  // % taxa adm (empresa_a, ex: 10)
+  valorMinimoAdministracao Float?   @map("valor_minimo_administracao")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
 
-  contract        Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  empresaParceira EmpresaParceira   @relation(fields: [empresaParceiraId], references: [id])
+  contract        Contract            @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  empresaParceira EmpresaParceira     @relation(fields: [empresaParceiraId], references: [id])
   instrumentos    InstrumentoFiscal[]
+  medicoes        Medicao[]
+  itensLocacao    ItemLocacao[]
 
   @@unique([contractId, empresaParceiraId])
   @@index([contractId])
   @@map("contract_partners")
+}
+
+// ─── ITEM DE LOCAÇÃO (itens do contrato Empresa B) ────────────────────────────
+
+model ItemLocacao {
+  id                String   @id @default(uuid())
+  contractPartnerId String   @map("contract_partner_id")
+  descricao         String
+  placa             String?
+  franquiaMensal    Float    @map("franquia_mensal")
+  unidadeExcedente  String   @default("hora") @map("unidade_excedente") // hora | km
+  valorExcedente    Float    @map("valor_excedente")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  contractPartner ContractPartner  @relation(fields: [contractPartnerId], references: [id], onDelete: Cascade)
+  usos            UsoItemLocacao[]
+
+  @@index([contractPartnerId])
+  @@map("itens_locacao")
+}
+
+// ─── FECHAMENTO MENSAL ────────────────────────────────────────────────────────
+
+model FechamentoMensal {
+  id               String    @id @default(uuid())
+  contractId       String    @map("contract_id")
+  competenciaAno   Int       @map("competencia_ano")
+  competenciaMes   Int       @map("competencia_mes")
+  // Etapa 1 — PC Contratual (custo direto CDG)
+  folhaPagamento   Float?    @map("folha_pagamento")
+  materiaisDiretos Float?    @map("materiais_diretos")
+  pcContratual     Float?    @map("pc_contratual")
+  // Etapa 2 — ND Contratual (taxa adm Empresa A)
+  ndContratual     Float?    @map("nd_contratual")
+  ndNumero         String?   @map("nd_numero")
+  ndEmissao        DateTime? @map("nd_emissao")
+  // Etapa 3 — PC Real
+  pcReal           Float?    @map("pc_real")
+  // Meta 90% (calculado a partir das transações)
+  totalSaidaCDG    Float?    @map("total_saida_cdg")
+  totalComNF       Float?    @map("total_com_nf")
+  // NF da Empresa A (taxa de administração)
+  nfAdmNumero      String?   @map("nf_adm_numero")
+  nfAdmValor       Float?    @map("nf_adm_valor")
+  // Adiantamentos pagos à Empresa A no mês (para cálculo da ND)
+  adiantEmpresaA   Float?    @map("adiant_empresa_a")
+  // Controle
+  status           String    @default("aberto") // aberto | pc_lancado | nd_lancada | fechado
+  observacoes      String?
+  createdById      String    @map("created_by_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  contract   Contract         @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  createdBy  User             @relation("FechamentosCreados", fields: [createdById], references: [id])
+  transacoes Transacao[]
+  usosItens  UsoItemLocacao[]
+
+  @@unique([contractId, competenciaAno, competenciaMes])
+  @@index([contractId])
+  @@map("fechamentos_mensais")
+}
+
+// ─── TRANSAÇÃO (hipóteses 1-8) ────────────────────────────────────────────────
+
+model Transacao {
+  id            String    @id @default(uuid())
+  fechamentoId  String    @map("fechamento_id")
+  hipotese      Int       // 1-8
+  descricao     String
+  valor         Float
+  beneficiario  String?
+  dataPagamento DateTime? @map("data_pagamento")
+  nfNumero      String?   @map("nf_numero")
+  observacoes   String?
+  createdById   String    @map("created_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  fechamento FechamentoMensal @relation(fields: [fechamentoId], references: [id], onDelete: Cascade)
+  createdBy  User             @relation("TransacoesCriadas", fields: [createdById], references: [id])
+
+  @@index([fechamentoId])
+  @@map("transacoes")
+}
+
+// ─── USO MENSAL DE ITEM DE LOCAÇÃO ────────────────────────────────────────────
+
+model UsoItemLocacao {
+  id             String   @id @default(uuid())
+  fechamentoId   String   @map("fechamento_id")
+  itemLocacaoId  String   @map("item_locacao_id")
+  horasOuKm      Float    @map("horas_ou_km")
+  valorFranquia  Float    @map("valor_franquia")
+  valorExcedente Float    @map("valor_excedente")
+  valorTotal     Float    @map("valor_total")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  fechamento  FechamentoMensal @relation(fields: [fechamentoId], references: [id], onDelete: Cascade)
+  itemLocacao ItemLocacao      @relation(fields: [itemLocacaoId], references: [id])
+
+  @@unique([fechamentoId, itemLocacaoId])
+  @@index([fechamentoId])
+  @@map("usos_itens_locacao")
 }
 
 // ─── INSTRUMENTO FISCAL ───────────────────────────────────────────────────────
@@ -615,6 +816,220 @@ model Contractor {
 
   @@index([contractId])
   @@map("contractors")
+}
+
+// ─── FROTA — ATIVO (equipamento / veículo) ───────────────────────────────────
+
+model Ativo {
+  id                 String   @id @default(uuid())
+  tag                String   @unique                  // ex: EQP-042, VEI-017
+  tipo               String                            // equipamento | veiculo
+  categoria          String                            // escavadeira | caminhão | compactador | etc.
+  descricao          String
+  marca              String?
+  modelo             String?
+  anoFabricacao      Int?     @map("ano_fabricacao")
+  placa              String?  @unique
+  numeroserie        String?  @map("numero_serie")
+  valorLocacaoMensal Float    @map("valor_locacao_mensal")
+  status             String   @default("disponivel")  // disponivel | alocado | manutencao | inativo
+  observacoes        String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  alocacoes      AlocacaoAtivo[]
+  ordensServico  OrdemServico[]
+  auditoriaItens AuditoriaItem[]
+  medicaoItens   MedicaoLocacaoItem[]
+
+  @@index([status])
+  @@index([tipo, categoria])
+  @@map("ativos")
+}
+
+// ─── FROTA — ALOCAÇÃO DE ATIVO (por contrato + trecho) ───────────────────────
+
+model AlocacaoAtivo {
+  id          String    @id @default(uuid())
+  ativoId     String    @map("ativo_id")
+  contratoId  String    @map("contrato_id")
+  projetoId   String?   @map("projeto_id")            // trecho / frente de serviço
+  dataInicio  DateTime  @map("data_inicio")
+  dataFim     DateTime? @map("data_fim")              // null = ainda alocado
+  observacoes String?
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  ativo     Ativo    @relation(fields: [ativoId], references: [id])
+  contrato  Contract @relation(fields: [contratoId], references: [id])
+  projeto   Project? @relation(fields: [projetoId], references: [id])
+  createdBy User     @relation("AlocacoesCreadas", fields: [createdById], references: [id])
+
+  @@index([ativoId])
+  @@index([contratoId])
+  @@index([projetoId])
+  @@index([dataFim])
+  @@map("alocacoes_ativos")
+}
+
+// ─── FROTA — MEDIÇÃO DE LOCAÇÃO (faturamento CDG Locações) ───────────────────
+
+model MedicaoLocacao {
+  id               String    @id @default(uuid())
+  contratoId       String    @map("contrato_id")
+  competenciaAno   Int       @map("competencia_ano")
+  competenciaMes   Int       @map("competencia_mes")
+  status           String    @default("rascunho")
+  // rascunho | aguard_supervisor | enviada | aprovada | guia_gerada | paga | rejeitada
+  moduloTipo       String    @default("veiculo") @map("modulo_tipo")
+  // veiculo | equipamento
+  totalGeral       Float     @default(0) @map("total_geral")
+  observacoes      String?
+  aprovadorId      String?   @map("aprovador_id")
+  dataAprovacao    DateTime? @map("data_aprovacao")
+  rejeicaoMotivo   String?   @map("rejeicao_motivo")
+  guiaPdfKey       String?   @map("guia_pdf_key")
+  comprovantePdfKey String?  @map("comprovante_pdf_key")
+  dataPagamento    DateTime? @map("data_pagamento")
+  // Conferência do supervisor de obra (etapa obrigatória)
+  supervisorId          String?   @map("supervisor_id")
+  supervisorAprovadoEm  DateTime? @map("supervisor_aprovado_em")
+  supervisorNota        String?   @map("supervisor_nota")
+  createdById      String    @map("created_by_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  contrato    Contract  @relation("MedicoesLocacao", fields: [contratoId], references: [id])
+  aprovador   User?     @relation("MedicoesAprovadas", fields: [aprovadorId], references: [id])
+  supervisor  User?     @relation("MedicoesConferidas", fields: [supervisorId], references: [id])
+  createdBy   User      @relation("MedicoesLocacaoCriadas", fields: [createdById], references: [id])
+  itens     MedicaoLocacaoItem[]
+
+  @@unique([contratoId, competenciaAno, competenciaMes])
+  @@index([contratoId])
+  @@index([status])
+  @@map("medicoes_locacao")
+}
+
+model MedicaoLocacaoItem {
+  id             String  @id @default(uuid())
+  medicaoId      String  @map("medicao_id")
+  ativoId        String  @map("ativo_id")
+  projetoId      String? @map("projeto_id")
+  diasAtivos     Int     @map("dias_ativos")
+  valorUnitario  Float   @map("valor_unitario")
+  totalItem      Float   @map("total_item")
+  observacoes    String?
+
+  medicao MedicaoLocacao @relation(fields: [medicaoId], references: [id], onDelete: Cascade)
+  ativo   Ativo          @relation(fields: [ativoId], references: [id])
+  projeto Project?       @relation("ItensLocacaoProjeto", fields: [projetoId], references: [id])
+
+  @@index([medicaoId])
+  @@index([ativoId])
+  @@map("medicao_locacao_itens")
+}
+
+// ─── FROTA — AUDITORIA DE CAMPO ───────────────────────────────────────────────
+
+model AuditoriaVisita {
+  id          String    @id @default(uuid())
+  projetoId   String?   @map("projeto_id")
+  contratoId  String?   @map("contrato_id")
+  auditorId   String    @map("auditor_id")
+  dataVisita  DateTime  @map("data_visita")
+  status      String    @default("agendada")
+  // agendada | em_andamento | concluida | cancelada
+  moduloTipo  String    @default("veiculo") @map("modulo_tipo")
+  // veiculo | equipamento
+  observacoes String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  projeto    Project?        @relation("AuditoriasVisita", fields: [projetoId], references: [id])
+  contrato   Contract?       @relation("AuditoriasContrato", fields: [contratoId], references: [id])
+  auditor    User            @relation("AuditoriasRealizadas", fields: [auditorId], references: [id])
+  itens      AuditoriaItem[]
+  pendencias PendenciaAuditoria[]
+
+  @@index([auditorId])
+  @@index([status])
+  @@index([dataVisita])
+  @@map("auditoria_visitas")
+}
+
+model AuditoriaItem {
+  id           String  @id @default(uuid())
+  visitaId     String  @map("visita_id")
+  ativoId      String  @map("ativo_id")
+  categoria    String
+  // seguranca | manutencao | operacao | documentacao
+  descricao    String
+  conformidade String  @default("ok")
+  // ok | atencao | critica
+  fotoKey      String? @map("foto_key")
+  observacao   String?
+
+  visita AuditoriaVisita     @relation(fields: [visitaId], references: [id], onDelete: Cascade)
+  ativo  Ativo               @relation(fields: [ativoId], references: [id])
+  pendencia PendenciaAuditoria?
+
+  @@index([visitaId])
+  @@index([ativoId])
+  @@map("auditoria_itens")
+}
+
+model PendenciaAuditoria {
+  id           String    @id @default(uuid())
+  visitaId     String    @map("visita_id")
+  itemId       String?   @unique @map("item_id")
+  descricao    String
+  severidade   String    // atencao | critica
+  prazo        DateTime?
+  status       String    @default("aberta")
+  // aberta | em_tratativa | resolvida | reincidente
+  responsavelId String?  @map("responsavel_id")
+  resolucaoNota String?  @map("resolucao_nota")
+  resolvidaEm  DateTime? @map("resolvida_em")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  visita      AuditoriaVisita @relation(fields: [visitaId], references: [id])
+  item        AuditoriaItem?  @relation(fields: [itemId], references: [id])
+  responsavel User?           @relation("PendenciasResponsavel", fields: [responsavelId], references: [id])
+
+  @@index([visitaId])
+  @@index([status])
+  @@index([responsavelId])
+  @@map("pendencias_auditoria")
+}
+
+// ─── FROTA — ORDEM DE SERVIÇO (manutenção) ───────────────────────────────────
+
+model OrdemServico {
+  id           String    @id @default(uuid())
+  ativoId      String    @map("ativo_id")
+  tipo         String                            // preventiva | corretiva
+  descricao    String
+  status       String    @default("aberta")
+  // aberta | em_execucao | concluida | cancelada
+  dataAbertura DateTime  @default(now()) @map("data_abertura")
+  dataPrevista DateTime? @map("data_prevista")
+  dataConclusao DateTime? @map("data_conclusao")
+  custo        Float?
+  executante   String?
+  observacoes  String?
+  createdById  String    @map("created_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  ativo     Ativo @relation(fields: [ativoId], references: [id])
+  createdBy User  @relation("OrdensServicoCriadas", fields: [createdById], references: [id])
+
+  @@index([ativoId])
+  @@index([status])
+  @@index([tipo])
+  @@map("ordens_servico")
 }
 
 // ─── AUDIT LOGS ──────────────────────────────────────────────────────────────

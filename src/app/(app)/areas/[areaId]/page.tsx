@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import {
   FileText, AlertTriangle, Briefcase, Plus, ChevronRight,
-  Clock, CheckCircle2, AlertCircle, CalendarRange,
+  Clock, CheckCircle2, AlertCircle, CalendarRange, Edit2,
 } from 'lucide-react'
 
 export default async function AreaDetailPage({
@@ -20,7 +20,9 @@ export default async function AreaDetailPage({
   if (!session) return null
 
   const areaSlugMap: Record<string, string> = {
-    planejamento: 'PLAN',
+    'sala-tecnica': 'PLAN',
+    planejamento: 'PLAN_PLANEJ',
+    orcamento: 'PLAN_ORC',
     'obras-proprias': 'OBRAS_PROP',
     'obras-terceirizadas': 'OBRAS_TERC',
     sesmt: 'SESMT',
@@ -130,6 +132,13 @@ export default async function AreaDetailPage({
           )}
           {isDirector && (
             <>
+              <Link
+                href={`/areas/${params.areaId}/editar`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Editar área
+              </Link>
               <Link
                 href={`/pauta?areaId=${area.id}`}
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
