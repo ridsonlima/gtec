@@ -36,11 +36,7 @@ interface SidebarProps {
 export function Sidebar({ session, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [areasOpen, setAreasOpen] = useState(true)
-  const [salaTecnicaOpen, setSalaTecnicaOpen] = useState(
-    pathname.startsWith('/areas/sala-tecnica') ||
-    pathname.startsWith('/areas/planejamento') ||
-    pathname.startsWith('/areas/orcamento')
-  )
+  const [salaTecnicaOpen, setSalaTecnicaOpen] = useState(true)
   const [parceirosOpen, setParceirosOpen] = useState(false)
   const [demandasOpen, setDemandasOpen] = useState(pathname.startsWith('/demandas'))
   const isCdgRental = pathname.startsWith('/frota') || pathname.startsWith('/equipamentos')
