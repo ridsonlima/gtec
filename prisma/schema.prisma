@@ -71,6 +71,7 @@ model User {
   auditoriasRealizadas      AuditoriaVisita[]     @relation("AuditoriasRealizadas")
   pendenciasResponsavel     PendenciaAuditoria[]  @relation("PendenciasResponsavel")
   ordensServicoCriadas      OrdemServico[]        @relation("OrdensServicoCriadas")
+  osUpdates                 OrdemServicoUpdate[]  @relation("OSUpdates")
 
   @@map("users")
 }
@@ -1029,11 +1030,31 @@ model OrdemServico {
 
   ativo     Ativo @relation(fields: [ativoId], references: [id])
   createdBy User  @relation("OrdensServicoCriadas", fields: [createdById], references: [id])
+  updates   OrdemServicoUpdate[]
 
   @@index([ativoId])
   @@index([status])
   @@index([tipo])
   @@map("ordens_servico")
+}
+
+// ─── FROTA — ATUALIZAÇÕES DE OS ──────────────────────────────────────────────
+
+model OrdemServicoUpdate {
+  id        String   @id @default(uuid())
+  osId      String   @map("os_id")
+  authorId  String   @map("author_id")
+  content   String
+  tipo      String   @default("atualizacao")
+  // atualizacao | problema_encontrado | peca_substituida | observacao
+  custo     Float?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  os     OrdemServico @relation(fields: [osId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  author User         @relation("OSUpdates", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([osId])
+  @@map("os_updates")
 }
 
 // ─── AUDIT LOGS ──────────────────────────────────────────────────────────────

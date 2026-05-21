@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { isManagerOrAbove } from '@/lib/permissions'
 import Link from 'next/link'
 import { OSAcoesInline } from '@/components/frota/OSAcoesInline'
+import { OSNewUpdateForm, OSUpdatesFeed, OSEditForm } from '@/components/frota/OSUpdatePanel'
 import {
   Wrench, ChevronLeft, Calendar, User, DollarSign,
   Clock, CheckCircle2, Play, XCircle, AlertTriangle, Car,
@@ -31,6 +32,10 @@ export default async function OSDetailPage({ params }: { params: { id: string } 
         },
       },
       createdBy: { select: { id: true, name: true } },
+      updates: {
+        orderBy: { createdAt: 'asc' },
+        include: { author: { select: { id: true, name: true } } },
+      },
     },
   })
 
@@ -50,6 +55,16 @@ export default async function OSDetailPage({ params }: { params: { id: string } 
 
   const backHref = os.ativo.tipo === 'veiculo' ? '/frota/manutencao' : '/equipamentos/manutencao'
   const ativoHref = os.ativo.tipo === 'veiculo' ? `/frota/ativos/${os.ativo.id}` : `/equipamentos/ativos/${os.ativo.id}`
+
+  // Serializa updates para os componentes client
+  const updatesSerial = os.updates.map((u) => ({
+    id: u.id,
+    content: u.content,
+    tipo: u.tipo,
+    custo: u.custo,
+    createdAt: u.createdAt.toISOString(),
+    author: { name: u.author.name },
+  }))
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -82,7 +97,7 @@ export default async function OSDetailPage({ params }: { params: { id: string } 
           <p className="text-sm text-gray-600 mt-1">{os.descricao}</p>
         </div>
 
-        {/* Ações */}
+        {/* Ações de status */}
         {canGestor && !['concluida', 'cancelada'].includes(os.status) && (
           <OSAcoesInline osId={os.id} status={os.status as any} role={session.user.role} />
         )}
@@ -110,17 +125,27 @@ export default async function OSDetailPage({ params }: { params: { id: string } 
         </div>
       </div>
 
-      {/* Detalhes da OS */}
+      {/* Detalhes da OS + botão editar */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Detalhes da OS</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Detalhes da OS</p>
+          {canGestor && !['concluida', 'cancelada'].includes(os.status) && (
+            <OSEditForm
+              osId={os.id}
+              osStatus={os.status}
+              os={{
+                descricao: os.descricao,
+                executante: os.executante,
+                dataPrevista: os.dataPrevista?.toISOString() ?? null,
+                custo: os.custo,
+                observacoes: os.observacoes,
+              }}
+            />
+          )}
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
-          <Info icon={<Calendar className="w-3.5 h-3.5" />} label="Data de abertura" value={fmt(os.dataAbertura)} />
-          <Info
-            icon={<Calendar className="w-3.5 h-3.5" />}
-            label="Prazo previsto"
-            value={fmt(os.dataPrevista)}
-            highlight={!!vencida}
-          />
+          <Info icon={<Calendar className="w-3.5 h-3.5" />} label="Data de abertura"  value={fmt(os.dataAbertura)} />
+          <Info icon={<Calendar className="w-3.5 h-3.5" />} label="Prazo previsto"   value={fmt(os.dataPrevista)} highlight={!!vencida} />
           {os.dataConclusao && (
             <Info icon={<CheckCircle2 className="w-3.5 h-3.5" />} label="Data de conclusão" value={fmt(os.dataConclusao)} />
           )}
@@ -128,18 +153,28 @@ export default async function OSDetailPage({ params }: { params: { id: string } 
             <Info icon={<User className="w-3.5 h-3.5" />} label="Executante / Oficina" value={os.executante} />
           )}
           {os.custo != null && (
-            <Info icon={<DollarSign className="w-3.5 h-3.5" />} label="Custo" value={fmtCurrency(os.custo)} />
+            <Info icon={<DollarSign className="w-3.5 h-3.5" />} label="Custo total" value={fmtCurrency(os.custo)} />
           )}
           <Info icon={<User className="w-3.5 h-3.5" />} label="Aberto por" value={os.createdBy.name} />
         </div>
 
         {os.observacoes && (
           <div className="mt-5 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 mb-1.5">Observações</p>
+            <p className="text-xs text-gray-400 mb-1.5">Observações gerais</p>
             <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{os.observacoes}</p>
           </div>
         )}
       </div>
+
+      {/* Feed de atividades */}
+      {updatesSerial.length > 0 && (
+        <OSUpdatesFeed updates={updatesSerial} />
+      )}
+
+      {/* Formulário de nova atualização */}
+      {canGestor && (
+        <OSNewUpdateForm osId={os.id} osStatus={os.status} />
+      )}
 
       {/* Estado encerrado */}
       {['concluida', 'cancelada'].includes(os.status) && (
