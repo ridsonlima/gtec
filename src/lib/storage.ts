@@ -1,12 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-
-// Client com service role — apenas server-side
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? 'gtec-attachments'
+import { put, del, list } from '@vercel/blob'
 
 export const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -24,55 +16,54 @@ export const ALLOWED_MIME_TYPES = [
 export const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
 /**
- * Faz upload de um arquivo para o Supabase Storage.
- * Retorna a storageKey (caminho no bucket).
+ * Faz upload de um arquivo para o Vercel Blob.
+ * Retorna a storageKey (URL pública do blob).
  */
 export async function uploadFile(
   buffer: Buffer,
   storageKey: string,
   mimeType: string
 ): Promise<string> {
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(storageKey, buffer, {
-      contentType: mimeType,
-      upsert: false,
-    })
+  const blob = await put(storageKey, buffer, {
+    access: 'public',
+    contentType: mimeType,
+  })
 
-  if (error) {
-    throw new Error(`Falha no upload: ${error.message}`)
+  return blob.url
+}
+
+/**
+ * Retorna a URL de download do arquivo.
+ * Se storageKey já for uma URL completa (novos uploads), retorna diretamente.
+ * Se for um path relativo (registros legados), resolve via Vercel Blob list().
+ */
+export async function getSignedUrl(
+  storageKey: string,
+  _expiresInSeconds = 3600
+): Promise<string> {
+  // Novos registros já guardam a URL completa
+  if (storageKey.startsWith('https://') || storageKey.startsWith('http://')) {
+    return storageKey
   }
-
+  // Registros legados guardam o path — busca a URL real no Blob
+  const { blobs } = await list({ prefix: storageKey, limit: 1 })
+  if (blobs.length > 0) return blobs[0].url
+  // Fallback: retorna o que tiver (vai falhar mas com mensagem mais clara)
   return storageKey
 }
 
 /**
- * Gera uma URL pré-assinada para download (expira em 1h por padrão).
- */
-export async function getSignedUrl(
-  storageKey: string,
-  expiresInSeconds = 3600
-): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(storageKey, expiresInSeconds)
-
-  if (error || !data?.signedUrl) {
-    throw new Error(`Falha ao gerar URL: ${error?.message}`)
-  }
-
-  return data.signedUrl
-}
-
-/**
- * Remove um arquivo do storage.
+ * Remove um arquivo do Vercel Blob.
+ * Aceita tanto URL completa quanto path legado.
  */
 export async function deleteFile(storageKey: string): Promise<void> {
-  const { error } = await supabase.storage.from(BUCKET).remove([storageKey])
-
-  if (error) {
-    throw new Error(`Falha ao deletar arquivo: ${error.message}`)
+  if (storageKey.startsWith('https://') || storageKey.startsWith('http://')) {
+    await del(storageKey)
+    return
   }
+  // Path legado: resolve a URL real antes de deletar
+  const { blobs } = await list({ prefix: storageKey, limit: 1 })
+  if (blobs.length > 0) await del(blobs[0].url)
 }
 
 /**

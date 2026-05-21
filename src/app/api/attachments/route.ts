@@ -37,19 +37,19 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const storageKey = generateStorageKey(objectType, objectId, file.name)
+    const storagePath = generateStorageKey(objectType, objectId, file.name)
 
-    // Upload para Supabase Storage
-    await uploadFile(buffer, storageKey, file.type)
+    // Upload para Vercel Blob — captura a URL completa retornada
+    const blobUrl = await uploadFile(buffer, storagePath, file.type)
 
-    // Registra no banco
+    // Registra no banco com a URL completa (não o path relativo)
     const attachment = await prisma.attachment.create({
       data: {
         objectType: objectType as ObjectType,
         objectId,
         uploadedById: session.user.id,
         originalName: file.name,
-        storageKey,
+        storageKey: blobUrl,
         mimeType: file.type,
         sizeBytes: file.size,
         evidenceRequestId: evidenceRequestId || null,
@@ -77,7 +77,8 @@ export async function POST(req: NextRequest) {
 
     return apiSuccess(attachment, 201)
   } catch (e) {
-    console.error('[POST /api/attachments]', e)
-    return apiError('Erro ao fazer upload do arquivo', 500)
+    const msg = e instanceof Error ? e.message : 'Erro desconhecido'
+    console.error('[POST /api/attachments]', msg)
+    return apiError(`Erro ao fazer upload: ${msg}`, 500)
   }
 }
