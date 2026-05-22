@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       where: { parentId: { not: null } },
       select: { parentId: true },
     })
-    excludeIds = [...new Set(parents.map((p) => p.parentId as string))]
+    excludeIds = Array.from(new Set(parents.map((p) => p.parentId as string)))
   }
 
   const areas = await prisma.area.findMany({
