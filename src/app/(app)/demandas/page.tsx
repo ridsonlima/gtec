@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { Plus, Filter, ArrowRightLeft, LayoutGrid, Download } from 'lucide-react'
+import { Plus, Filter, ArrowRightLeft, LayoutGrid, Download, GitBranch } from 'lucide-react'
 import { formatDate, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
@@ -123,6 +123,14 @@ export default function DemandasPage() {
             <Download className="w-4 h-4" />
             Exportar
           </a>
+          <Link
+            href="/demandas/pipeline"
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200
+                       text-sm text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <GitBranch className="w-4 h-4" />
+            Pipeline
+          </Link>
           <Link
             href="/demandas/kanban"
             className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200

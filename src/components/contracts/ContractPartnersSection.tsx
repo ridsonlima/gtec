@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Handshake, Plus, Trash2, Save, X, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
+import { ItemLocacaoSection } from './ItemLocacaoSection'
 
 const TIPO_LABELS: Record<string, string> = {
   gestao_obra: 'Gestão de Obra',
@@ -26,11 +27,24 @@ interface InstrumentoFiscal {
   percentage: number | null
 }
 
+interface ItemLocacao {
+  id: string
+  descricao: string
+  placa: string | null
+  franquiaMensal: number
+  unidadeExcedente: string
+  valorExcedente: number
+  isActive: boolean
+}
+
 interface ContractPartner {
   id: string
   percentageTotal: number
-  empresaParceira: { id: string; name: string; cnpj: string | null; contactName: string | null; contactPhone: string | null }
+  percentualAdministracao: number | null
+  valorMinimoAdministracao: number | null
+  empresaParceira: { id: string; name: string; cnpj: string | null; contactName: string | null; contactPhone: string | null; tipo: string }
   instrumentos: InstrumentoFiscal[]
+  itensLocacao: ItemLocacao[]
 }
 
 interface Props {
@@ -48,7 +62,7 @@ export function ContractPartnersSection({ contractId, partners, canEdit }: Props
   const [addingInstrId, setAddingInstrId] = useState<string | null>(null)
   const [editingPctId, setEditingPctId] = useState<string | null>(null)
   const [newPct, setNewPct] = useState('')
-  const [partnerForm, setPartnerForm] = useState({ empresaParceiraId: '', percentageTotal: '', novaEmpresa: false, nome: '', cnpj: '', contactName: '', contactPhone: '' })
+  const [partnerForm, setPartnerForm] = useState({ empresaParceiraId: '', percentageTotal: '', percentualAdministracao: '', novaEmpresa: false, nome: '', cnpj: '', contactName: '', contactPhone: '', tipo: 'terceiro' })
   const [instrForm, setInstrForm] = useState(EMPTY_INSTR)
   const [loading, setLoading] = useState(false)
 
@@ -69,7 +83,7 @@ export function ContractPartnersSection({ contractId, partners, canEdit }: Props
       const res = await fetch('/api/empresas-parceiras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: partnerForm.nome, cnpj: partnerForm.cnpj, contactName: partnerForm.contactName, contactPhone: partnerForm.contactPhone }),
+        body: JSON.stringify({ name: partnerForm.nome, cnpj: partnerForm.cnpj, contactName: partnerForm.contactName, contactPhone: partnerForm.contactPhone, tipo: partnerForm.tipo }),
       })
       const data = await res.json()
       empresaParceiraId = data.data.id
@@ -78,12 +92,16 @@ export function ContractPartnersSection({ contractId, partners, canEdit }: Props
     await fetch(`/api/contracts/${contractId}/partners`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ empresaParceiraId, percentageTotal: partnerForm.percentageTotal }),
+      body: JSON.stringify({
+        empresaParceiraId,
+        percentageTotal: partnerForm.percentageTotal,
+        percentualAdministracao: partnerForm.percentualAdministracao || null,
+      }),
     })
 
     setLoading(false)
     setAddingPartner(false)
-    setPartnerForm({ empresaParceiraId: '', percentageTotal: '', novaEmpresa: false, nome: '', cnpj: '', contactName: '', contactPhone: '' })
+    setPartnerForm({ empresaParceiraId: '', percentageTotal: '', percentualAdministracao: '', novaEmpresa: false, nome: '', cnpj: '', contactName: '', contactPhone: '', tipo: 'terceiro' })
     router.refresh()
   }
 
@@ -165,7 +183,18 @@ export function ContractPartnersSection({ contractId, partners, canEdit }: Props
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50/60">
                 <button onClick={() => setExpandedCpId(isExpanded ? null : cp.id)} className="flex-1 flex items-center gap-3 text-left min-w-0">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-800">{cp.empresaParceira.name}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-gray-800">{cp.empresaParceira.name}</p>
+                      {cp.empresaParceira.tipo === 'empresa_a' && (
+                        <span className="text-xs font-medium px-1.5 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200">Adm</span>
+                      )}
+                      {cp.empresaParceira.tipo === 'empresa_b' && (
+                        <span className="text-xs font-medium px-1.5 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">Locação</span>
+                      )}
+                      {cp.percentualAdministracao != null && (
+                        <span className="text-xs text-blue-600 font-medium">{cp.percentualAdministracao}% taxa adm</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                       {cp.empresaParceira.cnpj && <span className="text-xs text-gray-400">CNPJ: {cp.empresaParceira.cnpj}</span>}
                       {cp.empresaParceira.contactName && <span className="text-xs text-gray-400">{cp.empresaParceira.contactName}</span>}
@@ -248,6 +277,16 @@ export function ContractPartnersSection({ contractId, partners, canEdit }: Props
                       </div>
                     )}
                   </div>
+
+                  {/* Itens de locação (Empresa B) */}
+                  {cp.empresaParceira.tipo === 'empresa_b' && (
+                    <ItemLocacaoSection
+                      contractId={contractId}
+                      cpId={cp.id}
+                      itens={cp.itensLocacao}
+                      canEdit={canEdit}
+                    />
+                  )}
 
                   {/* Form novo instrumento */}
                   {addingInstrId === cp.id && (
@@ -337,13 +376,32 @@ export function ContractPartnersSection({ contractId, partners, canEdit }: Props
             </div>
           )}
 
-          <label className="block text-sm font-medium text-gray-700 space-y-1">
-            <span>% Total de repasse *</span>
-            <div className="flex items-center gap-2">
-              <input required type="number" min="0" max="100" step="0.01" value={partnerForm.percentageTotal} onChange={(e) => setPartnerForm((f) => ({ ...f, percentageTotal: e.target.value }))} className="input w-32" placeholder="0.00" />
-              <span className="text-sm text-gray-500">% do faturado</span>
-            </div>
-          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block text-sm font-medium text-gray-700 space-y-1">
+              <span>Tipo de empresa *</span>
+              <select value={partnerForm.tipo} onChange={(e) => setPartnerForm((f) => ({ ...f, tipo: e.target.value }))} className="input">
+                <option value="terceiro">Terceiro</option>
+                <option value="empresa_a">Empresa A — Administração de Obras</option>
+                <option value="empresa_b">Empresa B — Locação de Bens Móveis</option>
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-gray-700 space-y-1">
+              <span>% Total de repasse *</span>
+              <div className="flex items-center gap-2">
+                <input required type="number" min="0" max="100" step="0.01" value={partnerForm.percentageTotal} onChange={(e) => setPartnerForm((f) => ({ ...f, percentageTotal: e.target.value }))} className="input w-32" placeholder="0.00" />
+                <span className="text-sm text-gray-500">%</span>
+              </div>
+            </label>
+          </div>
+          {partnerForm.tipo === 'empresa_a' && (
+            <label className="block text-sm font-medium text-gray-700 space-y-1">
+              <span>% Taxa de administração</span>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" max="100" step="0.01" value={partnerForm.percentualAdministracao} onChange={(e) => setPartnerForm((f) => ({ ...f, percentualAdministracao: e.target.value }))} className="input w-32" placeholder="10.00" />
+                <span className="text-sm text-gray-500">% sobre o custo direto CDG</span>
+              </div>
+            </label>
+          )}
 
           <div className="flex gap-2">
             <button type="submit" disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cdg-blue text-white text-sm rounded-lg hover:opacity-90 disabled:opacity-60">

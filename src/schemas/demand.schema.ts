@@ -5,6 +5,7 @@ export const CreateDemandSchema = z.object({
   requestingAreaId: z.string().uuid().optional().nullable(),
   contractId: z.string().uuid().optional().nullable(),
   reportId: z.string().uuid().optional().nullable(),
+  projectId: z.string().uuid().optional().nullable(),
   title: z.string().min(3, 'Título muito curto').max(200),
   context: z.string().max(3000).optional(),
   responsibleId: z.string().uuid('Responsável inválido'),

@@ -2,17 +2,31 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
-import { canUpdateDemand } from '@/lib/permissions'
+import { canUpdateDemand, canContributeToDemand } from '@/lib/permissions'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return apiError('Nao autenticado', 401)
 
-  const demand = await prisma.demand.findUnique({ where: { id: params.id } })
+  const demand = await prisma.demand.findUnique({
+    where: { id: params.id },
+    include: { collaborators: { select: { userId: true } } },
+  })
   if (!demand) return apiError('Demanda nao encontrada', 404)
-  if (!canUpdateDemand(session, demand)) return apiError('Sem permissao', 403)
+
+  const collaboratorUserIds = demand.collaborators.map((c) => c.userId)
+
+  if (!canContributeToDemand(session, { ...demand, collaboratorUserIds })) {
+    return apiError('Sem permissao', 403)
+  }
 
   const body = await req.json()
+
+  // Somente quem tem canUpdateDemand pode alterar status
+  if (body.statusAfter && !canUpdateDemand(session, { ...demand, collaboratorUserIds })) {
+    return apiError('Sem permissao para alterar status', 403)
+  }
+
   const update = await prisma.$transaction(async (tx) => {
     const created = await tx.demandUpdate.create({
       data: {

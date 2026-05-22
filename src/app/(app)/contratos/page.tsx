@@ -139,6 +139,12 @@ export default async function ContractsPage() {
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[contract.status] ?? 'text-gray-600 bg-gray-50 border-gray-200'}`}>
                       {STATUS_LABELS[contract.status] ?? contract.status}
                     </span>
+                    {contract.executionModality === 'partner' && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full border text-blue-700 bg-blue-50 border-blue-200">Parceiro</span>
+                    )}
+                    {contract.executionModality === 'contractor' && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full border text-purple-700 bg-purple-50 border-purple-200">Empreiteiro</span>
+                    )}
                     {exp && contract.status !== 'completed' && (
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full border flex items-center gap-1 ${exp.cls}`}>
                         <Clock className="w-3 h-3" />

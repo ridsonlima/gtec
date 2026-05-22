@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { canAccessDemand, canUpdateDemand } from '@/lib/permissions'
+import { canAccessDemand, canUpdateDemand, canContributeToDemand } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
@@ -10,11 +10,17 @@ import { DemandActions } from '@/components/demands/DemandActions'
 import { CollaboratorsPanel } from '@/components/demands/CollaboratorsPanel'
 import { AcceptancePanel } from '@/components/demands/AcceptancePanel'
 import { DemandTimeline } from '@/components/demands/DemandTimeline'
+import { DemandEvolutions } from '@/components/demands/DemandEvolutions'
+import { DemandQA } from '@/components/demands/DemandQA'
+import { DemandChecklist } from '@/components/demands/DemandChecklist'
 import {
   ChevronLeft, Clock,
-  User, Briefcase, FileText, Calendar, ArrowRightLeft,
+  User, Briefcase, FileText, Calendar, ArrowRightLeft, AlertTriangle, Wrench,
 } from 'lucide-react'
 import { AttachmentsPanel } from '@/components/shared/AttachmentsPanel'
+import { EvidenciasPanel } from '@/components/shared/EvidenciasPanel'
+import { DemandDeleteButton } from '@/components/demands/DemandDeleteButton'
+import { DeadlineExtensionPanel } from '@/components/demands/DeadlineExtensionPanel'
 
 export default async function DemandDetailPage({ params }: { params: { id: string } }) {
   const session = await auth()
@@ -24,6 +30,7 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
     where: { id: params.id },
     include: {
       area:           true,
+      project:        { select: { id: true, name: true } },
       requestingArea:  { select: { id: true, name: true } },
       acceptedBy:      { select: { id: true, name: true } },
       rejectedBy:      { select: { id: true, name: true } },
@@ -37,6 +44,13 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
           addedBy: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'asc' },
+      },
+      deadlineRequests: {
+        include: {
+          requestedBy: { select: { id: true, name: true } },
+          reviewedBy:  { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
       },
       updates: {
         orderBy: { createdAt: 'desc' },
@@ -61,6 +75,10 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
           },
         },
       },
+      checklistItems: {
+        orderBy: { createdAt: 'asc' },
+        include: { createdBy: { select: { id: true, name: true } } },
+      },
     },
   })
 
@@ -71,6 +89,7 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
   if (!canAccessDemand(session, { ...demand, collaboratorUserIds })) notFound()
 
   const canEdit = canUpdateDemand(session, { ...demand, collaboratorUserIds })
+  const canContribute = canContributeToDemand(session, { ...demand, collaboratorUserIds })
 
   const PRIORITY_LABELS: Record<string, string> = {
     critical: 'Crítica', high: 'Alta', medium: 'Média', low: 'Baixa',
@@ -81,10 +100,7 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
   }
 
   const isInterArea = Boolean(demand.requestingAreaId)
-  const canActOnAcceptancePanel = isInterArea &&
-    ['master','admin','director'].includes(session.user.role)
-    ? false // diretoria acompanha mas não aceita/rejeita
-    : session.user.areaScopes.some((s) => s.areaId === demand.areaId && s.canWrite)
+  const canActOnAcceptancePanel = isInterArea && demand.responsibleId === session.user.id
 
   return (
     <div className="max-w-4xl space-y-5">
@@ -117,9 +133,14 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
             <p className="text-sm text-gray-600 mt-1 max-w-2xl whitespace-pre-line">{demand.context}</p>
           )}
         </div>
-        {canEdit && (
-          <DemandActions demandId={demand.id} currentStatus={demand.status} session={session} />
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {canEdit && (
+            <DemandActions demandId={demand.id} currentStatus={demand.status} session={session} />
+          )}
+          {['master', 'admin'].includes(session.user.role) && (
+            <DemandDeleteButton demandId={demand.id} />
+          )}
+        </div>
       </div>
 
       {/* Metadata grid */}
@@ -163,11 +184,57 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
               />
             </div>
           )}
+          {demand.project && (
+            <div className="col-span-2">
+              <MetaItem
+                icon={<Briefcase className="w-4 h-4" />}
+                label="Projeto"
+                value={demand.project.name}
+                href={`/projetos/${demand.project.id}`}
+              />
+            </div>
+          )}
           {demand.completedAt && (
             <MetaItem icon={<Clock className="w-4 h-4" />} label="Concluída em" value={formatDate(demand.completedAt)} />
           )}
         </div>
       </div>
+
+      {/* Bloqueios e suporte necessário */}
+      {(demand.blockers || demand.supportNeeded) && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+          {demand.blockers && (
+            <div>
+              <p className="text-xs font-semibold text-red-600 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> Bloqueios
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-line">{demand.blockers}</p>
+            </div>
+          )}
+          {demand.supportNeeded && (
+            <div>
+              <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                <Wrench className="w-3.5 h-3.5" /> Suporte necessário
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-line">{demand.supportNeeded}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Prorrogação de prazo */}
+      <DeadlineExtensionPanel
+        demandId={demand.id}
+        currentDueDate={demand.dueDate}
+        requests={demand.deadlineRequests.map((r) => ({
+          ...r,
+          proposedDate: r.proposedDate.toISOString(),
+          createdAt: r.createdAt.toISOString(),
+          reviewedAt: r.reviewedAt?.toISOString() ?? null,
+        }))}
+        canRequest={canContribute && !['completed', 'cancelled'].includes(demand.status)}
+        canReview={canEdit}
+      />
 
       {/* Painel de aceite (apenas demandas interárea) */}
       {isInterArea && demand.acceptanceStatus && (
@@ -201,9 +268,44 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
         }))}
         objectType="demand"
         objectId={demand.id}
-        canUpload={canEdit}
-        currentUserId={session.user.id}
+        canUpload={canContribute}
+        currentUserId={canEdit ? session.user.id : ''}
         canDeleteAll={['master', 'admin', 'director'].includes(session.user.role)}
+      />
+
+      {/* Evidências vinculadas */}
+      <EvidenciasPanel objectType="demand" objectId={demand.id} />
+
+      {/* Checklist de atividades */}
+      <DemandChecklist
+        demandId={demand.id}
+        initialItems={demand.checklistItems.map((i) => ({
+          ...i,
+          dueDate: i.dueDate ? new Date(i.dueDate) : null,
+          completedAt: i.completedAt ? new Date(i.completedAt) : null,
+        }))}
+        canManage={canEdit}
+      />
+
+      {/* Evoluções */}
+      <DemandEvolutions
+        demandId={demand.id}
+        initialUpdates={demand.updates.map((u) => ({
+          ...u,
+          createdAt: new Date(u.createdAt),
+        }))}
+        canAdd={canContribute}
+      />
+
+      {/* Perguntas & Respostas */}
+      <DemandQA
+        demandId={demand.id}
+        initialComments={demand.comments.map((c) => ({
+          ...c,
+          createdAt: new Date(c.createdAt),
+          replies: c.replies.map((r) => ({ ...r, createdAt: new Date(r.createdAt) })),
+        }))}
+        canAdd={canContribute}
       />
 
       {/* Linha do tempo unificada */}
@@ -233,6 +335,12 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
           role: c.role,
           user: c.user,
           addedBy: c.addedBy,
+        }))}
+        deadlineRequests={demand.deadlineRequests.map((r) => ({
+          ...r,
+          proposedDate: r.proposedDate.toISOString(),
+          createdAt: r.createdAt.toISOString(),
+          reviewedAt: r.reviewedAt?.toISOString() ?? null,
         }))}
         currentUserId={session.user.id}
         currentUserRole={session.user.role}

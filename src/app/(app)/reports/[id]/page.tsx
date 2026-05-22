@@ -8,7 +8,8 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ReportComments } from '@/components/reports/ReportComments'
 import { DeleteReportButton } from '@/components/reports/DeleteReportButton'
 import { PublishReportButton } from '@/components/reports/PublishReportButton'
-import { ChevronLeft, Paperclip, MessageSquare, Plus, Calendar } from 'lucide-react'
+import { ChevronLeft, Paperclip, MessageSquare, Plus, Calendar, ClipboardList } from 'lucide-react'
+import { PriorityBadge } from '@/components/shared/PriorityBadge'
 
 export default async function ReportDetailPage({
   params,
@@ -28,7 +29,13 @@ export default async function ReportDetailPage({
         orderBy: { createdAt: 'desc' },
         include: { uploadedBy: { select: { id: true, name: true } } },
       },
-      _count: { select: { versions: true, demands: true } },
+      demands: {
+        orderBy: [{ isOverdue: 'desc' }, { dueDate: 'asc' }],
+        include: {
+          responsible: { select: { id: true, name: true } },
+        },
+      },
+      _count: { select: { versions: true } },
     },
   })
 
@@ -208,6 +215,37 @@ export default async function ReportDetailPage({
           session={session}
         />
       </div>
+
+      {/* Demandas geradas a partir deste report */}
+      {report.demands.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-1.5">
+            <ClipboardList className="w-3.5 h-3.5" />
+            Demandas geradas ({report.demands.length})
+          </h3>
+          <div className="space-y-2">
+            {report.demands.map((d) => (
+              <Link
+                key={d.id}
+                href={`/demandas/${d.id}`}
+                className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0 hover:text-blue-600 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{d.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <PriorityBadge priority={d.priority} />
+                    <StatusBadge status={d.status} isOverdue={d.isOverdue} />
+                    <span className="text-xs text-gray-400">{d.responsible.name}</span>
+                  </div>
+                </div>
+                <span className={`text-xs flex-shrink-0 font-medium ${d.isOverdue ? 'text-red-600' : 'text-gray-400'}`}>
+                  {d.dueDate ? new Date(d.dueDate).toLocaleDateString('pt-BR') : '—'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Histórico de versões */}
       {report._count.versions > 0 && (

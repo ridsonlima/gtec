@@ -50,3 +50,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   await audit({ userId: session.user.id, action: 'demand.update', objectType: 'demand', objectId: params.id })
   return apiSuccess(updated)
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await auth()
+  if (!session) return apiError('Não autenticado', 401)
+  if (!['master', 'admin'].includes(session.user.role)) return apiError('Apenas master ou admin pode excluir demandas', 403)
+
+  const demand = await prisma.demand.findUnique({ where: { id: params.id } })
+  if (!demand) return apiError('Demanda não encontrada', 404)
+
+  // Remove registros filhos que não têm onDelete: Cascade no schema
+  await prisma.agendaItem.deleteMany({ where: { demandId: params.id } })
+  await prisma.mention.deleteMany({
+    where: { comment: { objectType: 'demand', objectId: params.id } },
+  })
+  await prisma.evidenceRequest.deleteMany({ where: { objectType: 'demand', objectId: params.id } })
+  await prisma.attachment.deleteMany({ where: { objectType: 'demand', objectId: params.id } })
+  await prisma.comment.deleteMany({ where: { objectType: 'demand', objectId: params.id } })
+
+  await prisma.demand.delete({ where: { id: params.id } })
+
+  await audit({ userId: session.user.id, action: 'demand.delete', objectType: 'demand', objectId: params.id })
+  return apiSuccess({ deleted: true })
+}

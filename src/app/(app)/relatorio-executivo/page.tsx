@@ -6,7 +6,7 @@ import { subDays, addDays, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { formatDate } from '@/lib/utils'
 import { PrintButton } from '@/components/relatorio-executivo/PrintButton'
-import { FileBarChart } from 'lucide-react'
+import { FileBarChart, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 export default async function RelatorioExecutivoPage() {
   const session = await auth()
@@ -15,6 +15,7 @@ export default async function RelatorioExecutivoPage() {
 
   const today        = new Date()
   const thirtyAgo    = subDays(today, 30)
+  const sixtyAgo     = subDays(today, 60)
   const in30         = addDays(today, 30)
   const reportDate   = format(today, "d 'de' MMMM 'de' yyyy", { locale: ptBR })
 
@@ -22,11 +23,15 @@ export default async function RelatorioExecutivoPage() {
     areas,
     overdueDemands,
     demandsLast30d,
+    demandsPrev30d,
     pendingEvidence,
     criticalDemands,
     contracts,
     projects,
     interareaSlaBreached,
+    recentDecisions,
+    contractValueAggregate,
+    atRiskValueAggregate,
   ] = await Promise.all([
     prisma.area.findMany({
       where: { isActive: true },
@@ -50,6 +55,10 @@ export default async function RelatorioExecutivoPage() {
     }),
     prisma.demand.findMany({
       where: { createdAt: { gte: thirtyAgo } },
+      select: { status: true },
+    }),
+    prisma.demand.findMany({
+      where: { createdAt: { gte: sixtyAgo, lt: thirtyAgo } },
       select: { status: true },
     }),
     prisma.evidenceRequest.count({ where: { status: 'pending' } }),
@@ -84,11 +93,43 @@ export default async function RelatorioExecutivoPage() {
         slaStatus: 'breached',
       },
     }),
+    prisma.report.findMany({
+      where: { status: 'published', hasDecisionNeeded: true, publishedAt: { gte: thirtyAgo } },
+      orderBy: { publishedAt: 'desc' },
+      take: 5,
+      include: { area: { select: { name: true } }, author: { select: { name: true } } },
+    }),
+    prisma.contract.aggregate({
+      _sum: { estimatedValue: true },
+      where: { status: { notIn: ['completed', 'suspended'] } },
+    }),
+    prisma.contract.aggregate({
+      _sum: { estimatedValue: true },
+      where: { status: { in: ['at_risk', 'delayed'] } },
+    }),
   ])
 
-  const totalDemands30    = demandsLast30d.length
+  const totalDemands30     = demandsLast30d.length
   const completedDemands30 = demandsLast30d.filter((d) => d.status === 'completed').length
   const completionRate     = totalDemands30 > 0 ? Math.round((completedDemands30 / totalDemands30) * 100) : null
+
+  const totalDemandsPrev     = demandsPrev30d.length
+  const completedDemandsPrev = demandsPrev30d.filter((d) => d.status === 'completed').length
+  const completionRatePrev   = totalDemandsPrev > 0 ? Math.round((completedDemandsPrev / totalDemandsPrev) * 100) : null
+
+  const totalContractValue  = contractValueAggregate._sum.estimatedValue ?? 0
+  const atRiskValue         = atRiskValueAggregate._sum.estimatedValue ?? 0
+
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+  function trend(curr: number, prev: number) {
+    if (prev === 0) return null
+    const delta = curr - prev
+    const pct   = Math.round(Math.abs(delta / prev) * 100)
+    return { delta, pct, up: delta > 0 }
+  }
+  const trendCreated   = trend(totalDemands30, totalDemandsPrev)
+  const trendCompleted = trend(completedDemands30, completedDemandsPrev)
 
   const contractsExpiringSoon = contracts.filter(
     (c) => c.endDate && c.endDate >= today && c.endDate <= in30
@@ -131,15 +172,42 @@ export default async function RelatorioExecutivoPage() {
         <PrintButton />
       </div>
 
-      {/* KPIs */}
+      {/* Resumo Financeiro */}
       <section>
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 print:text-black">
-          Indicadores — Últimos 30 Dias
+          Exposição Financeira em Contratos
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 print:border-gray-400">
+            <p className="text-xs text-gray-500">Valor total em contratos ativos</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{fmt(totalContractValue)}</p>
+          </div>
+          <div className={`border rounded-xl p-4 print:border-gray-400 ${atRiskValue > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
+            <p className={`text-xs ${atRiskValue > 0 ? 'text-red-600' : 'text-gray-500'}`}>Valor em risco / atraso</p>
+            <p className={`text-2xl font-bold mt-1 ${atRiskValue > 0 ? 'text-red-700' : 'text-gray-900'}`}>{fmt(atRiskValue)}</p>
+            {totalContractValue > 0 && atRiskValue > 0 && (
+              <p className="text-xs text-red-500 mt-0.5">{Math.round((atRiskValue / totalContractValue) * 100)}% do portfólio</p>
+            )}
+          </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-4 print:border-gray-400">
+            <p className="text-xs text-gray-500">Vencendo nos próximos 30 dias</p>
+            <p className={`text-2xl font-bold mt-1 ${contractsExpiringSoon.length > 0 ? 'text-amber-700' : 'text-gray-900'}`}>{contractsExpiringSoon.length}</p>
+            {contractsExpiringSoon.length > 0 && (
+              <p className="text-xs text-amber-600 mt-0.5">{fmt(contractsExpiringSoon.reduce((s, c) => s + (c.estimatedValue ?? 0), 0))}</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* KPIs com tendência */}
+      <section>
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 print:text-black">
+          Indicadores — Últimos 30 Dias <span className="font-normal text-gray-400 normal-case">(vs. 30d anteriores)</span>
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KpiCard label="Demandas Criadas" value={totalDemands30} color="blue" />
-          <KpiCard label="Demandas Concluídas" value={completedDemands30} color="green" />
-          <KpiCard label="Taxa de Conclusão" value={completionRate !== null ? `${completionRate}%` : '—'} color={completionRate !== null && completionRate >= 70 ? 'green' : 'amber'} />
+          <KpiCard label="Demandas Criadas" value={totalDemands30} color="blue" trend={trendCreated} trendInvert />
+          <KpiCard label="Demandas Concluídas" value={completedDemands30} color="green" trend={trendCompleted} />
+          <KpiCard label="Taxa de Conclusão" value={completionRate !== null ? `${completionRate}%` : '—'} color={completionRate !== null && completionRate >= 70 ? 'green' : 'amber'} prev={completionRatePrev !== null ? `${completionRatePrev}%` : undefined} />
           <KpiCard label="Demandas Vencidas" value={overdueDemands} color={overdueDemands > 0 ? 'red' : 'green'} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
@@ -326,6 +394,29 @@ export default async function RelatorioExecutivoPage() {
         </section>
       )}
 
+      {/* Decisões Necessárias */}
+      {recentDecisions.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 print:text-black">
+            Decisões Necessárias — Últimos 30 Dias
+          </h2>
+          <div className="space-y-3">
+            {recentDecisions.map((r) => (
+              <div key={r.id} className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 print:border-gray-300">
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <span className="text-xs font-semibold text-amber-800">{r.area.name}</span>
+                  <span className="text-xs text-amber-600">{r.publishedAt ? formatDate(r.publishedAt) : '—'} · {r.author.name}</span>
+                </div>
+                <p className="text-sm font-medium text-gray-800 mb-0.5">{r.title}</p>
+                {r.decisionsNeeded && (
+                  <p className="text-xs text-gray-700 line-clamp-3">{r.decisionsNeeded}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Rodapé */}
       <div className="border-t border-gray-200 pt-4 text-center text-xs text-gray-400 print:mt-8">
         Relatório gerado em {reportDate} · GTec — Sistema de Gestão Técnica
@@ -334,10 +425,13 @@ export default async function RelatorioExecutivoPage() {
   )
 }
 
-function KpiCard({ label, value, color }: {
+function KpiCard({ label, value, color, trend, trendInvert, prev }: {
   label: string
   value: number | string
   color: 'blue' | 'green' | 'amber' | 'red'
+  trend?: { delta: number; pct: number; up: boolean } | null
+  trendInvert?: boolean
+  prev?: string
 }) {
   const map = {
     blue:  'bg-blue-50 border-blue-100 text-blue-700',
@@ -345,10 +439,22 @@ function KpiCard({ label, value, color }: {
     amber: 'bg-amber-50 border-amber-100 text-amber-700',
     red:   'bg-red-50 border-red-100 text-red-700',
   }
+  const good = trend ? (trendInvert ? !trend.up : trend.up) : null
   return (
     <div className={`rounded-xl border p-4 text-center print:border-gray-300 ${map[color]}`}>
       <p className="text-2xl font-bold">{value}</p>
       <p className="text-xs mt-0.5">{label}</p>
+      {trend && (
+        <p className={`text-xs mt-1 font-medium flex items-center justify-center gap-0.5 ${good ? 'text-green-600' : 'text-red-600'}`}>
+          {trend.up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+          {trend.pct}% vs. mês ant.
+        </p>
+      )}
+      {!trend && prev !== undefined && (
+        <p className="text-xs mt-1 text-gray-400 flex items-center justify-center gap-0.5">
+          <Minus className="w-3 h-3" />ant.: {prev}
+        </p>
+      )}
     </div>
   )
 }

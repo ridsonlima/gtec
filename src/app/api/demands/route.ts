@@ -50,6 +50,9 @@ export async function GET(req: NextRequest) {
     where.OR = orClauses
   }
 
+  const openOnly = searchParams.get('openOnly')
+  if (openOnly === 'true') where.status = { notIn: ['completed', 'cancelled'] }
+
   if (contractId) where.contractId = contractId
   if (status) where.status = status
   if (priority) where.priority = priority
@@ -85,10 +88,13 @@ export async function GET(req: NextRequest) {
         origin: true,
         createdAt: true,
         requestingAreaId: true,
+        acceptanceStatus: true,
+        createdById: true,
         area: { select: { id: true, name: true, code: true } },
         requestingArea: { select: { id: true, name: true, code: true } },
         contract: { select: { id: true, number: true, name: true } },
         responsible: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true } },
         _count: { select: { comments: true, attachments: true, collaborators: true } },
       },
     }),
@@ -136,6 +142,7 @@ export async function POST(req: NextRequest) {
         requestingAreaId: data.requestingAreaId ?? null,
         contractId: data.contractId ?? null,
         reportId: data.reportId ?? null,
+        projectId: data.projectId ?? null,
         title: data.title,
         context: data.context,
         responsibleId: data.responsibleId,

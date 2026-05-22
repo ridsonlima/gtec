@@ -93,6 +93,13 @@ export function canUpdateDemand(session: Session, demand: DemandAccess): boolean
   return false
 }
 
+// Qualquer colaborador convidado pode contribuir (add updates, comments, attachments)
+// mas não pode alterar status nem gerenciar colaboradores
+export function canContributeToDemand(session: Session, demand: DemandAccess): boolean {
+  if (canUpdateDemand(session, demand)) return true
+  return demand.collaboratorUserIds?.includes(session.user.id) ?? false
+}
+
 export function canComment(session: Session, areaId?: string): boolean {
   const { role } = session.user
   if (role === 'master' || role === 'admin' || role === 'director') return true

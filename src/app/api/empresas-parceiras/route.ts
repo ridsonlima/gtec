@@ -11,11 +11,9 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get('search')
 
   const empresas = await prisma.empresaParceira.findMany({
-    where: {
-      isActive: true,
-      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
-    },
+    where: search ? { name: { contains: search, mode: 'insensitive' } } : {},
     orderBy: { name: 'asc' },
+    include: { _count: { select: { contractPartners: true } } },
   })
 
   return apiSuccess(empresas)
@@ -35,6 +33,7 @@ export async function POST(req: NextRequest) {
       cnpj: body.cnpj || null,
       contactName: body.contactName || null,
       contactPhone: body.contactPhone || null,
+      tipo: body.tipo || 'terceiro',
     },
   })
 

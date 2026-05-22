@@ -1,9 +1,8 @@
 import { timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { DemandUpdateActions } from './DemandUpdateActions'
 import {
-  Plus, Edit2, UserPlus, CheckCircle, XCircle, MessageSquare,
-  AlertCircle, Eye, AtSign,
+  Plus, Edit2, UserPlus, CheckCircle, XCircle, AtSign,
+  CalendarClock, CalendarCheck, CalendarX,
 } from 'lucide-react'
 
 const COMMENT_TYPE_META: Record<string, { label: string; dotClass: string; badgeClass: string }> = {
@@ -47,6 +46,18 @@ type TCollaborator = {
   addedBy: { name: string } | null
 }
 
+type TDeadlineRequest = {
+  id: string
+  proposedDate: string | Date
+  justification: string
+  status: string
+  reviewNote: string | null
+  createdAt: string | Date
+  reviewedAt: string | Date | null
+  requestedBy: { name: string }
+  reviewedBy: { name: string } | null
+}
+
 interface Props {
   demand: {
     createdAt: Date
@@ -61,9 +72,11 @@ interface Props {
   updates: TUpdate[]
   comments: TComment[]
   collaborators: TCollaborator[]
+  deadlineRequests: TDeadlineRequest[]
   currentUserId: string
   currentUserRole: string
 }
+
 
 type TimelineEvent =
   | { kind: 'created'; date: Date; authorName: string }
@@ -72,9 +85,12 @@ type TimelineEvent =
   | { kind: 'accepted'; date: Date; authorName: string }
   | { kind: 'rejected'; date: Date; authorName: string; reason: string | null }
   | { kind: 'comment'; id: string; date: Date; comment: TComment }
+  | { kind: 'deadline_requested'; id: string; date: Date; requesterName: string; proposedDate: Date; justification: string }
+  | { kind: 'deadline_approved'; id: string; date: Date; reviewerName: string; proposedDate: Date; reviewNote: string | null }
+  | { kind: 'deadline_rejected'; id: string; date: Date; reviewerName: string; proposedDate: Date; reviewNote: string | null }
 
 export function DemandTimeline({
-  demand, updates, comments, collaborators, currentUserId, currentUserRole,
+  demand, updates, comments, collaborators, deadlineRequests, currentUserId,
 }: Props) {
   const events: TimelineEvent[] = []
 
@@ -115,11 +131,39 @@ export function DemandTimeline({
     events.push({ kind: 'comment', id: c.id, date: c.createdAt, comment: c })
   }
 
-  events.sort((a, b) => b.date.getTime() - a.date.getTime())
+  for (const r of deadlineRequests) {
+    const proposed = new Date(r.proposedDate)
+    events.push({
+      kind: 'deadline_requested',
+      id: r.id,
+      date: new Date(r.createdAt),
+      requesterName: r.requestedBy.name,
+      proposedDate: proposed,
+      justification: r.justification,
+    })
+    if (r.status === 'approved' && r.reviewedAt && r.reviewedBy) {
+      events.push({
+        kind: 'deadline_approved',
+        id: `${r.id}-approved`,
+        date: new Date(r.reviewedAt),
+        reviewerName: r.reviewedBy.name,
+        proposedDate: proposed,
+        reviewNote: r.reviewNote,
+      })
+    }
+    if (r.status === 'rejected' && r.reviewedAt && r.reviewedBy) {
+      events.push({
+        kind: 'deadline_rejected',
+        id: `${r.id}-rejected`,
+        date: new Date(r.reviewedAt),
+        reviewerName: r.reviewedBy.name,
+        proposedDate: proposed,
+        reviewNote: r.reviewNote,
+      })
+    }
+  }
 
-  const canEditUpdate = (authorId: string) =>
-    (authorId === currentUserId && !['completed', 'cancelled'].includes(demand.status)) ||
-    ['master', 'admin', 'director'].includes(currentUserRole)
+  events.sort((a, b) => b.date.getTime() - a.date.getTime())
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -166,9 +210,6 @@ export function DemandTimeline({
                       </div>
                       {event.content && (
                         <p className="text-sm text-gray-700 whitespace-pre-line">{event.content}</p>
-                      )}
-                      {canEditUpdate(event.authorId) && (
-                        <DemandUpdateActions updateId={event.id} initialContent={event.content ?? ''} />
                       )}
                     </div>
                   </div>
@@ -281,6 +322,79 @@ export function DemandTimeline({
                             </div>
                           ))}
                         </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (event.kind === 'deadline_requested') {
+                return (
+                  <div key={`dlreq-${event.id}`} className="relative flex gap-4 pl-8">
+                    <div className="absolute left-1.5 top-1 w-4 h-4 rounded-full border-2 border-white bg-amber-400 ring-1 ring-amber-200 flex items-center justify-center">
+                      <CalendarClock className="w-2 h-2 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="text-xs font-medium text-gray-700">{event.requesterName}</span>
+                        <span className="text-xs text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">
+                          Prorrogação solicitada
+                        </span>
+                        <span className="text-xs text-gray-400">{timeAgo(event.date)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Novo prazo proposto: <span className="font-medium text-gray-700">{event.proposedDate.toLocaleDateString('pt-BR')}</span>
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 italic">"{event.justification}"</p>
+                    </div>
+                  </div>
+                )
+              }
+
+              if (event.kind === 'deadline_approved') {
+                return (
+                  <div key={`dlapp-${event.id}`} className="relative flex gap-4 pl-8">
+                    <div className="absolute left-1.5 top-1 w-4 h-4 rounded-full border-2 border-white bg-green-500 ring-1 ring-green-200 flex items-center justify-center">
+                      <CalendarCheck className="w-2 h-2 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="text-xs font-medium text-gray-700">{event.reviewerName}</span>
+                        <span className="text-xs text-green-700 font-medium bg-green-50 px-1.5 py-0.5 rounded-full border border-green-200">
+                          Prorrogação aprovada
+                        </span>
+                        <span className="text-xs text-gray-400">{timeAgo(event.date)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Prazo atualizado para <span className="font-medium text-green-700">{event.proposedDate.toLocaleDateString('pt-BR')}</span>
+                      </p>
+                      {event.reviewNote && (
+                        <p className="text-xs text-gray-400 mt-0.5 italic">"{event.reviewNote}"</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              if (event.kind === 'deadline_rejected') {
+                return (
+                  <div key={`dlrej-${event.id}`} className="relative flex gap-4 pl-8">
+                    <div className="absolute left-1.5 top-1 w-4 h-4 rounded-full border-2 border-white bg-red-400 ring-1 ring-red-200 flex items-center justify-center">
+                      <CalendarX className="w-2 h-2 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="text-xs font-medium text-gray-700">{event.reviewerName}</span>
+                        <span className="text-xs text-red-700 font-medium bg-red-50 px-1.5 py-0.5 rounded-full border border-red-200">
+                          Prorrogação rejeitada
+                        </span>
+                        <span className="text-xs text-gray-400">{timeAgo(event.date)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Prazo proposto <span className="font-medium">{event.proposedDate.toLocaleDateString('pt-BR')}</span> não foi aprovado
+                      </p>
+                      {event.reviewNote && (
+                        <p className="text-xs text-gray-400 mt-0.5 italic">"{event.reviewNote}"</p>
                       )}
                     </div>
                   </div>

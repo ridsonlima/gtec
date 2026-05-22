@@ -24,9 +24,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (error) return error
 
   const body = await req.json()
+  const data: any = {}
+  if (body.percentageTotal !== undefined) data.percentageTotal = Number(body.percentageTotal)
+  if (body.percentualAdministracao !== undefined) data.percentualAdministracao = body.percentualAdministracao != null ? Number(body.percentualAdministracao) : null
+  if (body.valorMinimoAdministracao !== undefined) data.valorMinimoAdministracao = body.valorMinimoAdministracao != null ? Number(body.valorMinimoAdministracao) : null
+
   const updated = await prisma.contractPartner.update({
     where: { id: params.cpId },
-    data: { percentageTotal: Number(body.percentageTotal) },
+    data,
     include: { empresaParceira: true, instrumentos: true },
   })
 
