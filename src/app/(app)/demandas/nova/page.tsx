@@ -10,8 +10,11 @@ interface DemandFormData {
   areaId: string
   requestingAreaId: string
   contractId: string
+  projectId: string
   title: string
   context: string
+  blockers: string
+  supportNeeded: string
   priority: string
   origin: string
   responsibleId: string
@@ -20,8 +23,9 @@ interface DemandFormData {
 }
 
 const EMPTY: DemandFormData = {
-  areaId: '', requestingAreaId: '', contractId: '', title: '', context: '',
-  priority: 'medium', origin: 'director', responsibleId: '', dueDate: '', reportId: '',
+  areaId: '', requestingAreaId: '', contractId: '', projectId: '', title: '', context: '',
+  blockers: '', supportNeeded: '', priority: 'medium', origin: 'director', responsibleId: '',
+  dueDate: '', reportId: '',
 }
 
 const PRIORITY_OPTIONS = [
@@ -68,7 +72,11 @@ export default function NovaDemandaPage() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }))
 
-  const { data: areasData } = useQuery({ queryKey: ['areas'], queryFn: () => fetch('/api/areas').then((r) => r.json()) })
+  const { data: areasData } = useQuery({ queryKey: ['areas', 'leaf'], queryFn: () => fetch('/api/areas?leafOnly=true').then((r) => r.json()) })
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects-active'],
+    queryFn: () => fetch('/api/projects?status=in_progress').then((r) => r.json()),
+  })
   const { data: contractsData } = useQuery({
     queryKey: ['contracts', form.areaId],
     queryFn: () => fetch(`/api/contracts?areaId=${form.areaId}`).then((r) => r.json()),
@@ -113,6 +121,7 @@ export default function NovaDemandaPage() {
   }, [])
 
   const areas = areasData?.data ?? []
+  const projects: any[] = projectsData?.data ?? []
   const contracts = contractsData?.data ?? []
   const usersArea: UserOption[] = usersAreaData?.data ?? []
   const collabResults: UserOption[] = collabSearchData?.data ?? []
@@ -159,6 +168,7 @@ export default function NovaDemandaPage() {
           requestingAreaId: isInterArea ? form.requestingAreaId : null,
           contractId: form.contractId || null,
           reportId: form.reportId || null,
+          projectId: form.projectId || null,
           collaboratorIds: collaborators.map((c) => c.id),
         }),
       })
@@ -253,12 +263,29 @@ export default function NovaDemandaPage() {
           </Field>
         )}
 
+        {projects.length > 0 && (
+          <Field label="Projeto (opcional)">
+            <select value={form.projectId} onChange={set('projectId')} className="input">
+              <option value="">Sem projeto vinculado</option>
+              {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+        )}
+
         <Field label="Título" required>
           <input type="text" value={form.title} onChange={set('title')} placeholder="Ex: Apresentar cronograma atualizado da obra" className="input" />
         </Field>
 
         <Field label="Contexto / descrição (opcional)">
           <textarea rows={3} value={form.context} onChange={set('context')} placeholder="Detalhe o que precisa ser feito, contexto e critério de conclusão." className="input resize-y" />
+        </Field>
+
+        <Field label="Bloqueios (opcional)">
+          <textarea rows={2} value={form.blockers} onChange={set('blockers')} placeholder="Descreva o que está impedindo o avanço desta demanda." className="input resize-y" />
+        </Field>
+
+        <Field label="Suporte necessário (opcional)">
+          <textarea rows={2} value={form.supportNeeded} onChange={set('supportNeeded')} placeholder="Indique que tipo de apoio ou recurso é necessário." className="input resize-y" />
         </Field>
 
         {/* Responsável */}

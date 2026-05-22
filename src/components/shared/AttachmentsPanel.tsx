@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { upload } from '@vercel/blob/client'
 import { Paperclip, Upload, Trash2, Download, X, AlertCircle } from 'lucide-react'
 import { formatFileSize, timeAgo } from '@/lib/utils'
 
@@ -17,6 +18,16 @@ const FILE_META: Record<string, { label: string; cls: string }> = {
   'application/x-zip-compressed':                                                          { label: 'ZIP', cls: 'bg-gray-100 text-gray-600' },
 }
 
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg', 'image/png', 'image/webp',
+  'application/zip', 'application/x-zip-compressed',
+]
+const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
 const ACCEPTED = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.zip'
 
 type Attachment = {
@@ -28,7 +39,7 @@ type Attachment = {
   uploadedBy: { id: string; name: string }
 }
 
-type UploadEntry = { tempId: string; name: string; size: number }
+type UploadEntry = { tempId: string; name: string; size: number; progress: number }
 
 interface Props {
   initialAttachments: Attachment[]
@@ -37,6 +48,7 @@ interface Props {
   canUpload: boolean
   currentUserId: string
   canDeleteAll?: boolean
+  evidenceRequestId?: string
 }
 
 export function AttachmentsPanel({
@@ -46,6 +58,7 @@ export function AttachmentsPanel({
   canUpload,
   currentUserId,
   canDeleteAll = false,
+  evidenceRequestId,
 }: Props) {
   const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments)
   const [uploading, setUploading]     = useState<UploadEntry[]>([])
@@ -57,24 +70,62 @@ export function AttachmentsPanel({
   async function uploadFiles(files: FileList | File[]) {
     setError('')
     const list = Array.from(files)
+
     for (const file of list) {
+      // Validações no cliente (antes mesmo de iniciar)
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        setError(`Tipo não permitido: ${file.name}`)
+        continue
+      }
+      if (file.size > MAX_SIZE) {
+        setError(`Arquivo muito grande (máx. 50 MB): ${file.name}`)
+        continue
+      }
+
       const tempId = crypto.randomUUID()
-      setUploading((prev) => [...prev, { tempId, name: file.name, size: file.size }])
+      setUploading((prev) => [...prev, { tempId, name: file.name, size: file.size, progress: 0 }])
 
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('objectType', objectType)
-      fd.append('objectId', objectId)
+      try {
+        // 1. Upload direto para o Vercel Blob — NÃO passa pela função serverless
+        //    Isso resolve o limite de 4,5 MB da função
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/attachments/upload',
+          clientPayload: JSON.stringify({ mimeType: file.type, sizeBytes: file.size }),
+          multipart: file.size > 5 * 1024 * 1024, // usa multipart para arquivos > 5 MB
+          onUploadProgress: ({ percentage }) => {
+            setUploading((prev) =>
+              prev.map((u) => u.tempId === tempId ? { ...u, progress: percentage } : u)
+            )
+          },
+        })
 
-      const res  = await fetch('/api/attachments', { method: 'POST', body: fd })
-      const data = await res.json()
+        // 2. Salva o registro no banco com a URL do blob
+        const res = await fetch('/api/attachments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blobUrl: blob.url,
+            originalName: file.name,
+            mimeType: file.type,
+            sizeBytes: file.size,
+            objectType,
+            objectId,
+            evidenceRequestId: evidenceRequestId || null,
+          }),
+        })
 
-      setUploading((prev) => prev.filter((u) => u.tempId !== tempId))
-
-      if (res.ok && data.data) {
-        setAttachments((prev) => [data.data, ...prev])
-      } else {
-        setError(data.error ?? `Erro ao enviar "${file.name}".`)
+        const data = await res.json()
+        if (res.ok && data.data) {
+          setAttachments((prev) => [data.data, ...prev])
+        } else {
+          setError(data.error ?? `Erro ao registrar "${file.name}".`)
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Erro desconhecido'
+        setError(`Erro ao enviar "${file.name}": ${msg}`)
+      } finally {
+        setUploading((prev) => prev.filter((u) => u.tempId !== tempId))
       }
     }
   }
@@ -134,7 +185,7 @@ export function AttachmentsPanel({
         </div>
       )}
 
-      {/* Zona de drag & drop (só quando pode fazer upload) */}
+      {/* Zona de drag & drop */}
       {canUpload && (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
@@ -161,13 +212,22 @@ export function AttachmentsPanel({
         </div>
       )}
 
-      {/* Uploads em andamento */}
+      {/* Uploads em andamento — com barra de progresso */}
       {uploading.map((u) => (
-        <div key={u.tempId} className="flex items-center gap-3 py-2.5 border-b border-gray-50">
-          <div className="animate-spin w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full flex-shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm text-gray-500 truncate">{u.name}</p>
-            <p className="text-xs text-gray-400">{formatFileSize(u.size)} · enviando…</p>
+        <div key={u.tempId} className="py-2.5 border-b border-gray-50">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="animate-spin w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-gray-600 truncate">{u.name}</p>
+              <p className="text-xs text-gray-400">{formatFileSize(u.size)} · {u.progress < 100 ? `${Math.round(u.progress)}% enviado` : 'finalizando…'}</p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="ml-7 h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-400 rounded-full transition-all duration-200"
+              style={{ width: `${u.progress}%` }}
+            />
           </div>
         </div>
       ))}
@@ -179,7 +239,7 @@ export function AttachmentsPanel({
 
       <div className="space-y-0">
         {attachments.map((att) => {
-          const meta = FILE_META[att.mimeType] ?? { label: 'ARQ', cls: 'bg-gray-100 text-gray-600' }
+          const meta  = FILE_META[att.mimeType] ?? { label: 'ARQ', cls: 'bg-gray-100 text-gray-600' }
           const canDel = canDeleteAll || att.uploadedBy.id === currentUserId
 
           return (

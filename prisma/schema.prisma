@@ -72,6 +72,7 @@ model User {
   pendenciasResponsavel     PendenciaAuditoria[]  @relation("PendenciasResponsavel")
   ordensServicoCriadas      OrdemServico[]        @relation("OrdensServicoCriadas")
   osUpdates                 OrdemServicoUpdate[]  @relation("OSUpdates")
+  tarefasPessoais           TarefaPessoal[]       @relation("TarefasPessoais")
 
   @@map("users")
 }
@@ -471,21 +472,35 @@ model ProjectUpdate {
 // ─── MEETING AGENDAS ─────────────────────────────────────────────────────────
 
 model MeetingAgenda {
-  id          String       @id @default(uuid())
-  title       String       
-  objective   String?     
-  meetingDate DateTime?    @map("meeting_date")
-  scheduledAt DateTime?    @map("scheduled_at")
-  createdById String       @map("created_by_id")
-  status      String @default("preparing")
-  notes       String?     
-  minutesText String?      @map("minutes_text")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  id          String    @id @default(uuid())
+  title       String
+  objective   String?
+  meetingDate DateTime? @map("meeting_date")
+  scheduledAt DateTime? @map("scheduled_at")
+  createdById String    @map("created_by_id")
+  status      String    @default("preparing")
+  // diretoria | interarea | externo
+  tipo        String    @default("diretoria")
+  // IDs de áreas envolvidas (JSON array) — para pautas interárea
+  areasEnvolvidas       String? @map("areas_envolvidas")
+  // Descrição dos participantes externos (texto livre, indicativo)
+  participantesExternos String? @map("participantes_externos")
+  // Seções de evolução / situação / próximos passos
+  evolucoes      String?
+  situacao       String?
+  proximosPassos String? @map("proximos_passos")
+  // Data proposta para próxima reunião
+  proximaReuniao DateTime? @map("proxima_reuniao")
+  notes       String?
+  minutesText String? @map("minutes_text")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   createdBy User         @relation(fields: [createdById], references: [id])
   items     AgendaItem[]
 
+  @@index([tipo])
+  @@index([createdById])
   @@map("meeting_agendas")
 }
 
@@ -1075,4 +1090,29 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ─── TAREFAS PESSOAIS ────────────────────────────────────────────────────────
+
+model TarefaPessoal {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  titulo      String
+  descricao   String?
+  status      String    @default("pendente")
+  // pendente | em_andamento | concluida | cancelada
+  prioridade  String    @default("media")
+  // baixa | media | alta | urgente
+  categoria   String?
+  prazo       DateTime?
+  concluidaEm DateTime? @map("concluida_em")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User @relation("TarefasPessoais", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([prazo])
+  @@map("tarefas_pessoais")
 }
