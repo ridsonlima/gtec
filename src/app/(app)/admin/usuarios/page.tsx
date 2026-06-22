@@ -2,7 +2,23 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Edit2, Save, Trash2, Users, X } from 'lucide-react'
+import { Edit2, Save, Trash2, Users, X, Clock, LogIn } from 'lucide-react'
+
+function tempoRelativo(dataISO: string | null | undefined): string {
+  if (!dataISO) return 'Nunca acessou'
+  const diff = Date.now() - new Date(dataISO).getTime()
+  const min  = Math.floor(diff / 60_000)
+  const h    = Math.floor(diff / 3_600_000)
+  const d    = Math.floor(diff / 86_400_000)
+  const sem  = Math.floor(d / 7)
+  const mes  = Math.floor(d / 30)
+  if (min < 1)   return 'Agora mesmo'
+  if (min < 60)  return `Há ${min} min`
+  if (h < 24)    return `Há ${h}h`
+  if (d < 7)     return `Há ${d} dia${d > 1 ? 's' : ''}`
+  if (sem < 4)   return `Há ${sem} semana${sem > 1 ? 's' : ''}`
+  return `Há ${mes} mês${mes > 1 ? 'es' : ''}`
+}
 
 const ROLES = [
   { value: 'master', label: 'Master' },
@@ -20,9 +36,12 @@ type UserForm = {
   role: string
   areaIds: string[]
   canWrite: boolean
+  approvoCodUsuario: string
+  approvoCodPerfil: string
+  approvoCodUsuarioMega: string
 }
 
-const emptyForm: UserForm = { name: '', email: '', password: '', role: 'viewer', areaIds: [], canWrite: false }
+const emptyForm: UserForm = { name: '', email: '', password: '', role: 'viewer', areaIds: [], canWrite: false, approvoCodUsuario: '', approvoCodPerfil: '', approvoCodUsuarioMega: '' }
 
 export default function UsersAdminPage() {
   const qc = useQueryClient()
@@ -35,7 +54,7 @@ export default function UsersAdminPage() {
   const [editForm, setEditForm] = useState<UserForm>(emptyForm)
 
   const { data: usersData } = useQuery({ queryKey: ['admin-users'], queryFn: () => fetch('/api/users').then((r) => r.json()) })
-  const { data: areasData } = useQuery({ queryKey: ['areas'], queryFn: () => fetch('/api/areas').then((r) => r.json()) })
+  const { data: areasData } = useQuery({ queryKey: ['areas-leaf'], queryFn: () => fetch('/api/areas?leafOnly=true').then((r) => r.json()) })
   const users = usersData?.data ?? []
   const areas = areasData?.data ?? []
 
@@ -63,6 +82,9 @@ export default function UsersAdminPage() {
       role: user.role ?? 'viewer',
       areaIds: scopes.map((scope: any) => scope.areaId),
       canWrite: scopes.some((scope: any) => scope.canWrite),
+      approvoCodUsuario: user.approvoCodUsuario != null ? String(user.approvoCodUsuario) : '',
+      approvoCodPerfil: user.approvoCodPerfil != null ? String(user.approvoCodPerfil) : '',
+      approvoCodUsuarioMega: user.approvoCodUsuarioMega != null ? String(user.approvoCodUsuarioMega) : '',
     })
   }
 
@@ -165,22 +187,43 @@ export default function UsersAdminPage() {
 
           <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
             {users.length === 0 && <p className="px-4 py-5 text-sm text-gray-500">Nenhum usuário cadastrado.</p>}
-            {users.map((u: any) => (
-              <div key={u.id} className="px-4 py-3 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{u.name}</p>
-                  <p className="text-xs text-gray-500">{u.email} - {roleLabel(u.role)}</p>
+            {users.map((u: any) => {
+              const nunca = !u.lastLoginAt
+              return (
+                <div key={u.id} className="px-4 py-3 flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-gray-900">{u.name}</p>
+                      {!u.isActive && (
+                        <span className="text-xs bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.5 rounded-full">Inativo</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{u.email} · {roleLabel(u.role)}</p>
+
+                    {/* Último login + contador */}
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${nunca ? 'text-gray-400 bg-gray-50 border-gray-200' : 'text-blue-700 bg-blue-50 border-blue-200'}`}>
+                        <Clock className="w-3 h-3" />
+                        {tempoRelativo(u.lastLoginAt)}
+                      </span>
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${u.loginCount === 0 ? 'text-gray-400 bg-gray-50 border-gray-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200'}`}>
+                        <LogIn className="w-3 h-3" />
+                        {u.loginCount ?? 0} acesso{u.loginCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button type="button" onClick={() => startEdit(u)} className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50">
+                      <Edit2 className="w-3.5 h-3.5" />Editar
+                    </button>
+                    <button type="button" disabled={deletingId === u.id} onClick={() => deleteUser(u)} className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-60">
+                      <Trash2 className="w-3.5 h-3.5" />{deletingId === u.id ? 'Excluindo...' : 'Excluir'}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => startEdit(u)} className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50">
-                    <Edit2 className="w-3.5 h-3.5" />Editar
-                  </button>
-                  <button type="button" disabled={deletingId === u.id} onClick={() => deleteUser(u)} className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-60">
-                    <Trash2 className="w-3.5 h-3.5" />{deletingId === u.id ? 'Excluindo...' : 'Excluir'}
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -205,6 +248,17 @@ function UserFields({ form, setForm, areas, toggleArea, passwordLabel, passwordR
         </div>
       </div>
       <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={form.canWrite} onChange={(e) => setForm((f) => ({ ...f, canWrite: e.target.checked }))} />Pode criar/editar na área</label>
+
+      {/* Integração Approvo — códigos do usuário (para ver só a própria fila) */}
+      <div className="border-t border-gray-100 pt-3">
+        <p className="text-sm font-medium text-gray-700">Integração Approvo</p>
+        <p className="text-xs text-gray-400 mb-2">Códigos do Approvo deste usuário (DevTools → ObterCardDocumentos → Payload). Deixe em branco se o usuário não usa o Approvo.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Field label="codUsuario"><input type="number" className="input" value={form.approvoCodUsuario} onChange={(e) => setForm((f) => ({ ...f, approvoCodUsuario: e.target.value }))} /></Field>
+          <Field label="codPerfil"><input type="number" className="input" value={form.approvoCodPerfil} onChange={(e) => setForm((f) => ({ ...f, approvoCodPerfil: e.target.value }))} /></Field>
+          <Field label="codUsuarioMega"><input type="number" className="input" value={form.approvoCodUsuarioMega} onChange={(e) => setForm((f) => ({ ...f, approvoCodUsuarioMega: e.target.value }))} /></Field>
+        </div>
+      </div>
     </>
   )
 }

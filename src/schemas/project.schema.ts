@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const CreateProjectSchema = z.object({
   name:            z.string().min(3, 'Nome obrigatório').max(200),
   objective:       z.string().max(2000).optional().nullable(),
+  contractId:      z.string().uuid().optional().nullable(),
   responsibleId:   z.string().uuid('Responsável inválido'),
   status:          z.enum(['planned', 'in_progress', 'completed', 'cancelled']).default('planned'),
   startDate:       z.string().optional().nullable(),

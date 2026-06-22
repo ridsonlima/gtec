@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, X, Check, Clock, AlertTriangle, Pencil, Trash2,
-  ChevronDown, Circle, Loader2, Flag,
+  ChevronDown, Circle, Loader2, Flag, RotateCcw,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,9 +20,18 @@ export interface Tarefa {
   prioridade: string
   categoria: string | null
   prazo: string | null
+  recorrente: boolean
+  recorrencia: string | null
   concluidaEm: string | null
   createdAt: string
   updatedAt: string
+}
+
+const RECORRENCIA_LABEL: Record<string, string> = {
+  diaria:    'Diária',
+  semanal:   'Semanal',
+  quinzenal: 'Quinzenal',
+  mensal:    'Mensal',
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,16 +74,23 @@ function TarefaForm({
   const [prazo, setPrazo]           = useState(
     initial?.prazo ? new Date(initial.prazo).toISOString().slice(0, 10) : ''
   )
+  const [recorrente, setRecorrente]   = useState(initial?.recorrente ?? false)
+  const [recorrencia, setRecorrencia] = useState(initial?.recorrencia ?? 'semanal')
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!titulo.trim()) { setError('Título obrigatório'); return }
+    if (recorrente && !prazo) { setError('Tarefas recorrentes precisam de uma data de início (prazo)'); return }
     setError('')
     setSaving(true)
     try {
-      await onSave({ titulo, descricao: descricao || null, prioridade, categoria: categoria || null, prazo: prazo || null })
+      await onSave({
+        titulo, descricao: descricao || null, prioridade,
+        categoria: categoria || null, prazo: prazo || null,
+        recorrente, recorrencia: recorrente ? recorrencia : null,
+      })
     } catch {
       setError('Erro ao salvar. Tente novamente.')
     } finally {
@@ -133,6 +149,36 @@ function TarefaForm({
           />
         </label>
       </div>
+      {/* Recorrência */}
+      <div className="bg-gray-50 rounded-lg border border-gray-200 px-3 py-2.5 space-y-2">
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={recorrente}
+            onChange={(e) => setRecorrente(e.target.checked)}
+            className="rounded"
+          />
+          <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+          <span className="font-medium">Tarefa recorrente</span>
+        </label>
+        {recorrente && (
+          <div className="flex items-center gap-2 pl-5">
+            <span className="text-xs text-gray-500 whitespace-nowrap">Repetir:</span>
+            <select
+              value={recorrencia}
+              onChange={(e) => setRecorrencia(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+              <option value="diaria">Diariamente</option>
+              <option value="semanal">Semanalmente</option>
+              <option value="quinzenal">A cada 2 semanas</option>
+              <option value="mensal">Mensalmente</option>
+            </select>
+            <span className="text-xs text-gray-400">a partir do prazo informado</span>
+          </div>
+        )}
+      </div>
+
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancelar</button>
@@ -271,6 +317,14 @@ function TarefaCard({
             <span className={`inline-flex items-center gap-1 text-xs ${overdue ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
               {overdue ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
               {fmt(tarefa.prazo)}
+            </span>
+          )}
+
+          {/* Recorrente */}
+          {tarefa.recorrente && tarefa.recorrencia && (
+            <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md font-medium">
+              <RotateCcw className="w-3 h-3" />
+              {RECORRENCIA_LABEL[tarefa.recorrencia] ?? tarefa.recorrencia}
             </span>
           )}
 

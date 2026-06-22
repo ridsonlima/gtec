@@ -134,7 +134,7 @@ export function AlocarLoteModal({ count, tags, ativoIds, onSuccess, onClose }: P
             <button
               type="submit"
               disabled={saving || !contratoId}
-              className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
             >
               <Link2 className="w-3.5 h-3.5" />
               {saving ? 'Alocando…' : `Confirmar (${count} ativos)`}

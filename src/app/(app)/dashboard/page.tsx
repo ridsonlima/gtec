@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { subDays, startOfMonth, addDays } from 'date-fns'
+import { subDays, startOfMonth, addDays, startOfWeek, format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import Link from 'next/link'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -9,6 +10,11 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { ArrowRightLeft, AlertTriangle, Clock } from 'lucide-react'
 import { DemandActivityFeed } from '@/components/dashboard/DemandActivityFeed'
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid'
+import { MeuDiaPanel } from '@/components/dashboard/MeuDiaPanel'
+import { AlertasPreditivos } from '@/components/dashboard/AlertasPreditivos'
+import { AprovacoesCard } from '@/components/dashboard/AprovacoesCard'
+import { SemanaView } from '@/components/atividade/SemanaView'
+import { ExecutiveBI, type ExecKpi } from '@/components/dashboard/ExecutiveBI'
 import type { DashboardData } from '@/components/dashboard/DashboardGrid'
 import type { WidgetId } from '@/lib/dashboard-prefs'
 
@@ -35,6 +41,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
   if (isDirectorRole) {
     const TABS = [
       { key: 'overview',  label: 'Visão Geral' },
+      { key: 'atividade', label: 'Atividade' },
       { key: 'demandas',  label: 'Demandas' },
       { key: 'contratos', label: 'Contratos' },
       { key: 'projetos',  label: 'Projetos' },
@@ -128,6 +135,42 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
         seen: u.views.length > 0,
       }))
       const feedUnseenCount = feedItems.filter((i) => !i.seen).length
+
+      // ── Dados do Painel Executivo (BI) ───────────────────────────────────
+      const eightWeeksAgo = subDays(today, 56)
+      const [demands8w, openByStatus, contractAgg] = await Promise.all([
+        prisma.demand.findMany({ where: { createdAt: { gte: eightWeeksAgo } }, select: { createdAt: true, status: true, updatedAt: true } }),
+        prisma.demand.groupBy({ by: ['status'], where: { status: { notIn: ['completed', 'cancelled'] } }, _count: { status: true } }),
+        prisma.contract.aggregate({ _sum: { estimatedValue: true }, where: { status: 'active' } }),
+      ])
+
+      const weekly = Array.from({ length: 8 }, (_, i) => {
+        const wkStart = startOfWeek(subDays(today, (7 - i) * 7), { weekStartsOn: 1 })
+        const wkEnd   = startOfWeek(subDays(today, (6 - i) * 7), { weekStartsOn: 1 })
+        const criadas    = demands8w.filter((d) => new Date(d.createdAt) >= wkStart && new Date(d.createdAt) < wkEnd).length
+        const concluidas = demands8w.filter((d) => d.status === 'completed' && new Date(d.updatedAt) >= wkStart && new Date(d.updatedAt) < wkEnd).length
+        return { label: format(wkStart, 'dd/MM', { locale: ptBR }), criadas, concluidas }
+      })
+
+      const ST_LABEL: Record<string, string> = { pending: 'Pendente', in_progress: 'Em andamento', blocked: 'Bloqueada', active: 'Ativa', pending_approval: 'Aguard. aprovação' }
+      const ST_CLS:   Record<string, string> = { pending: 'bg-gray-400', in_progress: 'bg-blue-500', blocked: 'bg-amber-500', active: 'bg-blue-400', pending_approval: 'bg-purple-500' }
+      const statusDist = openByStatus
+        .map((s) => ({ label: ST_LABEL[s.status] ?? s.status, value: s._count.status, cls: ST_CLS[s.status] ?? 'bg-gray-400' }))
+        .sort((a, b) => b.value - a.value)
+
+      const totalDemands30 = demandsLast30d.length
+      const completed30    = demandsLast30d.filter((d) => d.status === 'completed').length
+      const completionRate = totalDemands30 > 0 ? Math.round((completed30 / totalDemands30) * 100) : 0
+      const contractValue  = contractAgg._sum.estimatedValue ?? 0
+      const fmtMoney = (v: number) => v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(1)}M` : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+      const execKpis: ExecKpi[] = [
+        { id: 'overdue',    label: 'Demandas vencidas',         value: String(overdueDemands),          tone: overdueDemands > 0 ? 'red' : 'green',                                          icon: 'overdue',    href: '/demandas?isOverdue=true' },
+        { id: 'completion', label: 'Taxa de conclusão (30d)',   value: `${completionRate}%`,            tone: completionRate >= 70 ? 'green' : completionRate >= 40 ? 'amber' : 'red',        icon: 'completion' },
+        { id: 'contracts',  label: 'Contratos em risco',        value: String(contractsAtRisk.length),  tone: contractsAtRisk.length > 0 ? 'amber' : 'green',                                icon: 'contract',   href: '/contratos?status=at_risk' },
+        { id: 'money',      label: 'Valor em contratos ativos', value: fmtMoney(contractValue),         tone: 'blue',                                                                        icon: 'money',      href: '/contratos' },
+        { id: 'sla',        label: 'SLA interárea em risco',    value: String(interareaSlaAlerts.length), tone: interareaSlaAlerts.length > 0 ? 'red' : 'green',                             icon: 'sla',        href: '/relatorio-interarea' },
+      ]
 
       // ── Build widget nodes (server-rendered, passed to client DashboardGrid) ──
       const widgets: Record<WidgetId, React.ReactNode> = {
@@ -395,7 +438,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
       return (
         <div className="space-y-6">
           <DirectorHeader today={today} />
+          <MeuDiaPanel userId={session.user.id} userName={session.user.name ?? undefined} />
+          <AlertasPreditivos />
+          <AprovacoesCard userId={session.user.id} />
           <TabNav tabs={TABS} active={tab} />
+          <ExecutiveBI kpis={execKpis} weekly={weekly} statusDist={statusDist} areas={areaStatus} />
           <DashboardGrid data={dashData} widgets={widgets} />
         </div>
       )
@@ -805,6 +852,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
       )
     }
 
+    // ── Atividade tab ─────────────────────────────────────────────────────
+    if (tab === 'atividade') {
+      return (
+        <div className="space-y-6">
+          <DirectorHeader today={today} />
+          <TabNav tabs={TABS} active={tab} />
+          <SemanaView />
+        </div>
+      )
+    }
+
     // Fallback to overview
     redirect('/dashboard')
   }
@@ -815,6 +873,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
 
   const COORD_TABS = [
     { key: 'overview',  label: 'Visão Geral' },
+    { key: 'atividade', label: 'Atividade' },
     { key: 'demandas',  label: 'Demandas' },
     { key: 'contratos', label: 'Contratos' },
   ]
@@ -892,20 +951,70 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
     }))
     const coordFeedUnseenCount = coordFeedItems.filter((i) => !i.seen).length
 
+    // ── Dados do Painel Executivo (BI) — RESTRITOS às áreas do coordenador ──
+    const coordEightWeeksAgo = subDays(today, 56)
+    const coordThirtyAgo     = subDays(today, 30)
+    const [cDemands8w, cDemands30, cOpenByStatus, cContractAgg, cSlaRisco, cOpenByArea, cOverdueByArea] = await Promise.all([
+      prisma.demand.findMany({ where: { areaId: { in: areaIds }, createdAt: { gte: coordEightWeeksAgo } }, select: { createdAt: true, status: true, updatedAt: true } }),
+      prisma.demand.findMany({ where: { areaId: { in: areaIds }, createdAt: { gte: coordThirtyAgo } }, select: { areaId: true, status: true } }),
+      prisma.demand.groupBy({ by: ['status'], where: { areaId: { in: areaIds }, status: { notIn: ['completed', 'cancelled'] } }, _count: { status: true } }),
+      prisma.contract.aggregate({ _sum: { estimatedValue: true }, where: { areaId: { in: areaIds }, status: 'active' } }),
+      prisma.demand.count({ where: { areaId: { in: areaIds }, acceptanceStatus: 'pending_acceptance', slaStatus: { in: ['warning', 'breached'] } } }),
+      prisma.demand.groupBy({ by: ['areaId'], where: { areaId: { in: areaIds }, status: { notIn: ['completed', 'cancelled'] } }, _count: { _all: true } }),
+      prisma.demand.groupBy({ by: ['areaId'], where: { areaId: { in: areaIds }, isOverdue: true, status: { notIn: ['completed', 'cancelled'] } }, _count: { _all: true } }),
+    ])
+
+    const cWeekly = Array.from({ length: 8 }, (_, i) => {
+      const wkStart = startOfWeek(subDays(today, (7 - i) * 7), { weekStartsOn: 1 })
+      const wkEnd   = startOfWeek(subDays(today, (6 - i) * 7), { weekStartsOn: 1 })
+      const criadas    = cDemands8w.filter((d) => new Date(d.createdAt) >= wkStart && new Date(d.createdAt) < wkEnd).length
+      const concluidas = cDemands8w.filter((d) => d.status === 'completed' && new Date(d.updatedAt) >= wkStart && new Date(d.updatedAt) < wkEnd).length
+      return { label: format(wkStart, 'dd/MM', { locale: ptBR }), criadas, concluidas }
+    })
+
+    const cST_LABEL: Record<string, string> = { pending: 'Pendente', in_progress: 'Em andamento', blocked: 'Bloqueada', active: 'Ativa', pending_approval: 'Aguard. aprovação' }
+    const cST_CLS:   Record<string, string> = { pending: 'bg-gray-400', in_progress: 'bg-blue-500', blocked: 'bg-amber-500', active: 'bg-blue-400', pending_approval: 'bg-purple-500' }
+    const cStatusDist = cOpenByStatus.map((s) => ({ label: cST_LABEL[s.status] ?? s.status, value: s._count.status, cls: cST_CLS[s.status] ?? 'bg-gray-400' })).sort((a, b) => b.value - a.value)
+
+    const openMap    = new Map(cOpenByArea.map((g) => [g.areaId, g._count._all]))
+    const overdueMap = new Map(cOverdueByArea.map((g) => [g.areaId, g._count._all]))
+    const comp30Map  = new Map<string, { total: number; done: number }>()
+    for (const d of cDemands30) {
+      const cur = comp30Map.get(d.areaId) ?? { total: 0, done: 0 }
+      comp30Map.set(d.areaId, { total: cur.total + 1, done: cur.done + (d.status === 'completed' ? 1 : 0) })
+    }
+    const cAreas = areaData.map((a) => {
+      const active  = openMap.get(a.id) ?? 0
+      const overdue = overdueMap.get(a.id) ?? 0
+      const comp    = comp30Map.get(a.id)
+      const completionRate = comp && comp.total > 0 ? Math.round((comp.done / comp.total) * 100) : null
+      const status  = overdue > 0 ? 'critical' : active > 5 ? 'attention' : 'ok'
+      return { id: a.id, name: a.name, status, activeDemands: active, overdueCount: overdue, completionRate, daysSinceLastReport: null }
+    })
+
+    const cContractsAtRisk = contracts.filter((c) => c.status === 'at_risk' || c.status === 'delayed').length
+    const cContractValue   = cContractAgg._sum.estimatedValue ?? 0
+    const cFmtMoney = (v: number) => v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(1)}M` : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+    const coordKpis: ExecKpi[] = [
+      { id: 'overdue',    label: 'Demandas vencidas',         value: String(overdueDemands),         tone: overdueDemands > 0 ? 'red' : 'green',                                       icon: 'overdue',    href: '/demandas?isOverdue=true' },
+      { id: 'completion', label: 'Resolução no mês',          value: `${resolucaoMes ?? 0}%`,        tone: (resolucaoMes ?? 0) >= 70 ? 'green' : (resolucaoMes ?? 0) >= 40 ? 'amber' : 'red', icon: 'completion' },
+      { id: 'contracts',  label: 'Contratos em risco',        value: String(cContractsAtRisk),       tone: cContractsAtRisk > 0 ? 'amber' : 'green',                                   icon: 'contract',   href: '/contratos?status=at_risk' },
+      { id: 'money',      label: 'Valor em contratos ativos', value: cFmtMoney(cContractValue),      tone: 'blue',                                                                     icon: 'money',      href: '/contratos' },
+      { id: 'sla',        label: 'SLA interárea em risco',    value: String(cSlaRisco),              tone: cSlaRisco > 0 ? 'red' : 'green',                                            icon: 'sla',        href: '/relatorio-interarea' },
+    ]
+
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">{areaData.length === 1 ? areaData[0].name : 'Meu Dashboard'}</h1>
           <p className="text-sm text-gray-500 mt-0.5">Olá, {session.user.name} · {today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
+        <MeuDiaPanel userId={session.user.id} userName={session.user.name ?? undefined} />
+        <AprovacoesCard userId={session.user.id} />
         <TabNav tabs={COORD_TABS} active={tab} />
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <AlertCard label="Demandas Vencidas" value={overdueDemands} color={overdueDemands > 0 ? 'red' : 'green'} href="/demandas?isOverdue=true" />
-          <AlertCard label="Contratos Ativos" value={contracts.filter((c) => c.status === 'active').length} color="blue" href="/contratos" />
-          <AlertCard label="Abertas no Mês" value={demandsThisMonth} color="gray" href="/demandas" />
-          <AlertCard label="Resolvidas no Mês" value={demandsCompletedThisMonth} subtitle={resolucaoMes !== null ? `${resolucaoMes}%` : undefined} color={resolucaoMes !== null && resolucaoMes >= 70 ? 'green' : 'amber'} href="/demandas?status=completed" />
-        </div>
+        <ExecutiveBI kpis={coordKpis} weekly={cWeekly} statusDist={cStatusDist} areas={cAreas} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <section>
@@ -1138,6 +1247,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: SP
             </tbody>
           </table>
         </div>
+      </div>
+    )
+  }
+
+  // ── Coordinator: Atividade tab ────────────────────────────────────────────
+  if (tab === 'atividade') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Atividade</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Calendário semanal de atividades</p>
+        </div>
+        <TabNav tabs={COORD_TABS} active={tab} />
+        <SemanaView />
       </div>
     )
   }

@@ -54,7 +54,7 @@ export function ProjectUpdateForm({ projectId, initialUpdates, canAdd }: Props) 
             <button
               onClick={submit}
               disabled={saving || !content.trim()}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50"
             >
               {saving ? 'Enviando…' : 'Registrar'}
             </button>

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { canAccessArea } from '@/lib/permissions'
 import { recalcFechamento } from '@/lib/recalc-fechamento'
+import { audit, ACTIONS } from '@/lib/audit'
 
 async function getFechOrFail(fechId: string, contractId: string, session: any) {
   const fech = await prisma.fechamentoMensal.findUnique({
@@ -60,6 +61,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string;
   })
 
   await recalcFechamento(params.fechId)
+
+  await audit({
+    userId: session.user.id,
+    action: ACTIONS.TRANSACAO_CREATED,
+    objectType: 'transacao',
+    objectId: tx.id,
+    metadata: {
+      contractId: params.id,
+      fechamentoId: params.fechId,
+      hipotese: tx.hipotese,
+      valor: tx.valor,
+      beneficiario: tx.beneficiario,
+      nfNumero: tx.nfNumero,
+    },
+  })
 
   return apiSuccess(tx, 201)
 }

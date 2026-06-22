@@ -6,6 +6,7 @@ import { CreateDemandSchema } from '@/schemas/demand.schema'
 import { canCreateDemand, getUserAreaIds, canAccessArea } from '@/lib/permissions'
 import { audit, ACTIONS } from '@/lib/audit'
 import { notifyDemandAssigned, notifyCollaboratorAdded, notifyInterareaPendingAcceptance } from '@/lib/notifications'
+import { getAusenciasMap } from '@/lib/ausencias'
 import { ZodError } from 'zod'
 
 // GET /api/demands
@@ -31,6 +32,17 @@ export async function GET(req: NextRequest) {
   const allowedAreaIds = getUserAreaIds(session)
   const where: any = {}
 
+  // IDs de usuários que este usuário está cobrindo (cobertura de férias)
+  const activeAusencias = await prisma.avisoAusencia.findMany({
+    where: {
+      substitutoId: session.user.id,
+      ativo: true,
+      OR: [{ dataFim: null }, { dataFim: { gte: new Date() } }],
+    },
+    select: { usuarioId: true },
+  })
+  const coveredUserIds = activeAusencias.map((a) => a.usuarioId)
+
   if (areaId) {
     if (!canAccessArea(session, areaId)) return apiError('Sem acesso', 403)
     where.areaId = areaId
@@ -47,7 +59,14 @@ export async function GET(req: NextRequest) {
     if (collabDemandIds.length > 0) {
       orClauses.push({ id: { in: collabDemandIds } })
     }
+    // Inclui demandas dos usuários cobertos por este substituto
+    if (coveredUserIds.length > 0) {
+      orClauses.push({ responsibleId: { in: coveredUserIds } })
+    }
     where.OR = orClauses
+  } else if (coveredUserIds.length > 0) {
+    // Diretor/admin sem filtro de área — mas ainda deve ver as cobertas
+    // (eles já veem tudo, então coveredUserIds não restringe nada)
   }
 
   const openOnly = searchParams.get('openOnly')
@@ -87,6 +106,7 @@ export async function GET(req: NextRequest) {
         completedAt: true,
         origin: true,
         createdAt: true,
+        updatedAt: true,
         requestingAreaId: true,
         acceptanceStatus: true,
         createdById: true,
@@ -101,8 +121,32 @@ export async function GET(req: NextRequest) {
     prisma.demand.count({ where }),
   ])
 
+  // Mapa de ausências dos responsáveis (para sinalizar substituição a terceiros)
+  const ausenciasMap = await getAusenciasMap(demands.map((d) => d.responsible?.id))
+
+  // Mapa de "última visualização" do usuário → sinaliza cards com novidade
+  const views = await prisma.demandView.findMany({
+    where: { userId: session.user.id, demandId: { in: demands.map((d) => d.id) } },
+    select: { demandId: true, viewedAt: true },
+  })
+  const viewMap = new Map(views.map((v) => [v.demandId, v.viewedAt]))
+
+  // Marca quais demandas são cobertura de férias para este usuário + substituição
+  const demandsWithCoverage = demands.map((d) => {
+    const aus = d.responsible?.id ? ausenciasMap.get(d.responsible.id) : undefined
+    const viewedAt = viewMap.get(d.id)
+    return {
+      ...d,
+      coberturaInfo: coveredUserIds.includes(d.responsible?.id ?? '')
+        ? { type: 'cobertura', nomeOriginal: d.responsible?.name ?? '' }
+        : null,
+      substituicaoInfo: aus ? { substitutoNome: aus.substitutoNome } : null,
+      unread: !viewedAt || new Date(d.updatedAt) > new Date(viewedAt),
+    }
+  })
+
   return Response.json({
-    data: demands,
+    data: demandsWithCoverage,
     total,
     page,
     limit,

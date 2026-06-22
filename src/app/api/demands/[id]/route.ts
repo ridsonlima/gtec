@@ -5,7 +5,7 @@ import { apiSuccess, apiError } from '@/types/api'
 import { canAccessDemand, canUpdateDemand } from '@/lib/permissions'
 import { audit } from '@/lib/audit'
 
-const VALID_STATUSES = ['pending', 'in_progress', 'blocked', 'completed', 'cancelled']
+const VALID_STATUSES = ['pending', 'in_progress', 'pending_approval', 'blocked', 'completed', 'cancelled']
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()

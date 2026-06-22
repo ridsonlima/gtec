@@ -11,15 +11,20 @@ export function ContractDeleteButton({ contractId }: { contractId: string }) {
   async function remove() {
     if (!confirm('Excluir este contrato? Esta ação não pode ser desfeita.')) return
     setLoading(true)
-    const res = await fetch(`/api/contracts/${contractId}`, { method: 'DELETE' })
-    const data = await res.json()
-    setLoading(false)
-    if (!res.ok || data?.error) {
-      alert(data?.error ?? 'Não foi possível excluir o contrato.')
-      return
+    try {
+      const res = await fetch(`/api/contracts/${contractId}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || data?.error || data?.success === false) {
+        alert(data?.error ?? `Não foi possível excluir o contrato (erro ${res.status}).`)
+        return
+      }
+      router.push('/contratos')
+      router.refresh()
+    } catch (e) {
+      alert('Falha de conexão ao excluir o contrato. Tente novamente.')
+    } finally {
+      setLoading(false)
     }
-    router.push('/contratos')
-    router.refresh()
   }
 
   return (

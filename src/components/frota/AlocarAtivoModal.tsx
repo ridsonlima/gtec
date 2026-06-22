@@ -37,7 +37,8 @@ export function AlocarAtivoModal({ ativoId, ativoTag, ativoDescricao, compact }:
 
   useEffect(() => {
     if (!contratoId) { setProjetos([]); setProjetoId(''); return }
-    fetch('/api/projects')
+    setProjetoId('')
+    fetch(`/api/projects?contractId=${contratoId}`)
       .then((r) => r.json())
       .then((d) => setProjetos(d.data ?? []))
   }, [contratoId])
@@ -78,7 +79,7 @@ export function AlocarAtivoModal({ ativoId, ativoTag, ativoDescricao, compact }:
         onClick={() => setOpen(true)}
         className={compact
           ? 'inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700 border border-blue-300 rounded hover:bg-blue-50 transition-colors'
-          : 'inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors'}
+          : 'inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] transition-colors'}
         title={compact ? 'Alocar em contrato' : undefined}
       >
         <Link2 className={compact ? 'w-3 h-3' : 'w-4 h-4'} />
@@ -202,7 +203,7 @@ export function AlocarAtivoModal({ ativoId, ativoTag, ativoDescricao, compact }:
                 <button
                   type="submit"
                   disabled={saving || !contratoId}
-                  className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50"
                 >
                   {saving ? 'Alocando…' : 'Confirmar alocação'}
                 </button>

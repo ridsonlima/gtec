@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { LayoutDashboard, Layers, FileText, Building2, Users, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, Activity, Handshake, GitBranch, List, LayoutGrid, Truck, Package, Receipt, ClipboardCheck, Wrench, Gauge, CheckSquare } from 'lucide-react'
+import { LayoutDashboard, Layers, FileText, Building2, Users, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, Activity, Handshake, GitBranch, List, LayoutGrid, Truck, Package, Receipt, ClipboardCheck, Wrench, Gauge, CheckSquare, Palmtree, Megaphone, FileBarChart, ListChecks, Gavel, FileSpreadsheet, HardHat } from 'lucide-react'
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { CDGLogo } from './CDGLogo'
 import { getRoleLabel } from '@/lib/role-labels'
+import { canManageFuncionarios } from '@/lib/permissions'
 
 const SALA_TECNICA = {
   name: 'Sala Técnica',
@@ -20,9 +22,17 @@ const SALA_TECNICA = {
   ],
 }
 
+const SESMT = {
+  name: 'SESMT',
+  code: 'SESMT',
+  children: [
+    { name: 'Meio Ambiente', href: '/areas/meio-ambiente', code: 'SESMT_MA' },
+    { name: 'Seg. do Trab.', href: '/areas/seg-trabalho', code: 'SESMT_SEG' },
+  ],
+}
+
 const AREAS = [
   { name: 'Obras Próprias', href: '/areas/obras-proprias', code: 'OBRAS_PROP' },
-  { name: 'SESMT e Logística', href: '/areas/sesmt', code: 'SESMT' },
   { name: 'Equip. e Almoxarifado', href: '/areas/equipamentos', code: 'EQUIP' },
 ]
 
@@ -37,26 +47,35 @@ export function Sidebar({ session, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [areasOpen, setAreasOpen] = useState(true)
   const [salaTecnicaOpen, setSalaTecnicaOpen] = useState(true)
+  const [sesmtOpen, setSesmtOpen] = useState(SESMT.children.some(c => pathname.startsWith(c.href)) || pathname.startsWith('/funcionarios'))
   const [parceirosOpen, setParceirosOpen] = useState(false)
   const [demandasOpen, setDemandasOpen] = useState(pathname.startsWith('/demandas'))
   const isCdgRental = pathname.startsWith('/frota') || pathname.startsWith('/equipamentos')
   const [cdgRentalOpen, setCdgRentalOpen] = useState(isCdgRental)
-  const [frotaOpen, setFrotaOpen] = useState(pathname.startsWith('/frota'))
-  const [equipOpen, setEquipOpen] = useState(pathname.startsWith('/equipamentos'))
   const { role } = session.user
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const isLeadership = role === 'master' || role === 'director' || role === 'admin'
   const isCoordinator = role === 'manager'
   const showDashboard = isLeadership || isCoordinator
+  const showFuncionarios = canManageFuncionarios(session)
+
+  // Comunicados pendentes de "ciente" → badge de destaque
+  const { data: comunicadosPend } = useQuery({
+    queryKey: ['comunicados-pendentes'],
+    queryFn: () => fetch('/api/comunicados/pendentes').then((r) => r.json()),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  })
+  const comunicadosBadge: number = comunicadosPend?.data?.count ?? 0
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-gray-100">
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-900 to-slate-950 text-gray-100 border-r border-white/5">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
         <CDGLogo />
-        {onClose && <button onClick={onClose} className="text-gray-400 hover:text-white lg:hidden"><X className="w-5 h-5" /></button>}
+        {onClose && <button onClick={onClose} className="text-gray-400 hover:text-white lg:hidden p-1.5 rounded-lg hover:bg-white/10"><X className="w-5 h-5" /></button>}
       </div>
 
-      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {showDashboard && (
           <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" active={isActive('/dashboard')} />
         )}
@@ -89,6 +108,34 @@ export function Sidebar({ session, onClose }: SidebarProps) {
                         {sub.name}
                       </Link>
                     ))}
+                  </div>
+                )}
+              </div>
+              {/* SESMT com sub-áreas */}
+              <div>
+                <button
+                  onClick={() => setSesmtOpen(!sesmtOpen)}
+                  className={cn('w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors',
+                    SESMT.children.some(c => isActive(c.href))
+                      ? 'text-white bg-gray-700'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  )}
+                >
+                  <span className="flex-1 text-left">{SESMT.name}</span>
+                  {sesmtOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                </button>
+                {sesmtOpen && (
+                  <div className="ml-4 mt-0.5 space-y-0.5">
+                    {SESMT.children.map((sub) => (
+                      <Link key={sub.code} href={sub.href} className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive(sub.href) ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
+                        {sub.name}
+                      </Link>
+                    ))}
+                    {showFuncionarios && (
+                      <Link href="/funcionarios" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/funcionarios') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
+                        <HardHat className="w-3.5 h-3.5 flex-shrink-0" /> Funcionários
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
@@ -151,6 +198,16 @@ export function Sidebar({ session, onClose }: SidebarProps) {
           )}
         </div>
 
+        <NavItem href="/comunicados" icon={<Megaphone className="w-4 h-4" />} label="Comunicados" active={isActive('/comunicados')} badge={comunicadosBadge} />
+
+        {(isLeadership || isCoordinator) && (
+          <NavItem href="/pendencias" icon={<ListChecks className="w-4 h-4" />} label="Pendências" active={isActive('/pendencias')} />
+        )}
+
+        {(isLeadership || isCoordinator) && (
+          <NavItem href="/aprovacoes" icon={<ClipboardCheck className="w-4 h-4" />} label="Aprovações" active={isActive('/aprovacoes')} />
+        )}
+
         <NavItem href="/contratos" icon={<FileText className="w-4 h-4" />} label="Contratos" active={isActive('/contratos')} />
 
         {/* CDG RENTAL */}
@@ -171,94 +228,51 @@ export function Sidebar({ session, onClose }: SidebarProps) {
 
             {cdgRentalOpen && (
               <div className="ml-4 mt-0.5 space-y-0.5">
-
-                {/* Sub: Frota */}
-                <button
-                  onClick={() => setFrotaOpen(!frotaOpen)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors',
-                    isActive('/frota') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  )}
-                >
-                  <Truck className="w-3 h-3 flex-shrink-0" />
-                  <span className="flex-1 text-left font-medium">Frota</span>
-                  {frotaOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                </button>
-                {frotaOpen && (
-                  <div className="ml-5 space-y-0.5">
-                    <Link href="/frota/dashboard" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/frota/dashboard') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Gauge className="w-3 h-3" /> Dashboard
+                {[
+                  { func: 'dashboard',  label: 'Dashboard',  icon: Gauge },
+                  { func: 'ativos',     label: 'Ativos',     icon: Truck },
+                  { func: 'medicoes',   label: 'Medições',   icon: Receipt },
+                  { func: 'auditorias', label: 'Auditorias', icon: ClipboardCheck },
+                  { func: 'manutencao', label: 'Manutenção', icon: Wrench },
+                ].map(({ func, label, icon: ItemIcon }) => {
+                  const ativo = pathname.startsWith(`/frota/${func}`) || pathname.startsWith(`/equipamentos/${func}`)
+                  return (
+                    <Link
+                      key={func}
+                      href={`/frota/${func}`}
+                      className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', ativo ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}
+                    >
+                      <ItemIcon className="w-3 h-3" /> {label}
                     </Link>
-                    <Link href="/frota/ativos" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/frota/ativos') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Truck className="w-3 h-3" /> Veículos
-                    </Link>
-                    <Link href="/frota/medicoes" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/frota/medicoes') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Receipt className="w-3 h-3" /> Medições
-                    </Link>
-                    <Link href="/frota/auditorias" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/frota/auditorias') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <ClipboardCheck className="w-3 h-3" /> Auditorias
-                    </Link>
-                    <Link href="/frota/manutencao" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/frota/manutencao') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Wrench className="w-3 h-3" /> Manutenção
-                    </Link>
-                  </div>
-                )}
-
-                {/* Sub: Equipamentos */}
-                <button
-                  onClick={() => setEquipOpen(!equipOpen)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors',
-                    isActive('/equipamentos') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  )}
-                >
-                  <Package className="w-3 h-3 flex-shrink-0" />
-                  <span className="flex-1 text-left font-medium">Equipamentos</span>
-                  {equipOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                </button>
-                {equipOpen && (
-                  <div className="ml-5 space-y-0.5">
-                    <Link href="/equipamentos/dashboard" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/equipamentos/dashboard') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Gauge className="w-3 h-3" /> Dashboard
-                    </Link>
-                    <Link href="/equipamentos/ativos" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/equipamentos/ativos') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Package className="w-3 h-3" /> Equipamentos
-                    </Link>
-                    <Link href="/equipamentos/medicoes" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/equipamentos/medicoes') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Receipt className="w-3 h-3" /> Medições
-                    </Link>
-                    <Link href="/equipamentos/auditorias" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/equipamentos/auditorias') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <ClipboardCheck className="w-3 h-3" /> Auditorias
-                    </Link>
-                    <Link href="/equipamentos/manutencao" className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors', isActive('/equipamentos/manutencao') ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800')}>
-                      <Wrench className="w-3 h-3" /> Manutenção
-                    </Link>
-                  </div>
-                )}
-
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 <NavItem href="/calendario" icon={<CalendarDays className="w-4 h-4" />} label="Calendário" active={isActive('/calendario')} />
         {(isLeadership || isCoordinator) && (
-          <NavItem href="/pauta" icon={<ClipboardList className="w-4 h-4" />} label="Pauta" active={isActive('/pauta')} />
-        )}
-        {(isLeadership || isCoordinator) && (
-          <NavItem href="/projetos" icon={<Briefcase className="w-4 h-4" />} label="Projetos" active={isActive('/projetos')} />
-        )}
-        {(isLeadership || isCoordinator) && (
-          <NavItem href="/atividade" icon={<Activity className="w-4 h-4" />} label="Atividade" active={isActive('/atividade')} />
+          <NavItem href="/pauta" icon={<ClipboardList className="w-4 h-4" />} label="Pauta" active={isActive('/pauta') || isActive('/decisoes')} />
         )}
 
         <div className="border-t border-gray-700 my-2" />
         <NavItem href="/minhas-tarefas" icon={<CheckSquare className="w-4 h-4" />} label="Minhas Tarefas" active={isActive('/minhas-tarefas')} />
 
+        {(isLeadership || isCoordinator) && (
+          <NavItem href="/cobertura" icon={<Palmtree className="w-4 h-4" />} label="Cobertura" active={isActive('/cobertura')} />
+        )}
+
         {isLeadership && (
           <>
             <div className="border-t border-gray-700 my-2" />
-            <NavItem href="/relatorio-interarea" icon={<ArrowRightLeft className="w-4 h-4" />} label="Interárea" active={isActive('/relatorio-interarea')} />
+            <NavItem
+              href="/relatorio-executivo"
+              icon={<FileBarChart className="w-4 h-4" />}
+              label="Relatórios"
+              active={isActive('/relatorio-executivo') || isActive('/analytics') || isActive('/relatorio-interarea')}
+            />
             <NavItem href="/admin/usuarios" icon={<Users className="w-4 h-4" />} label="Usuários" active={isActive('/admin/usuarios')} />
+            <NavItem href="/admin/importar" icon={<FileSpreadsheet className="w-4 h-4" />} label="Importar CSV" active={isActive('/admin/importar')} />
           </>
         )}
       </nav>
@@ -286,6 +300,27 @@ export function Sidebar({ session, onClose }: SidebarProps) {
   )
 }
 
-function NavItem({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) {
-  return <Link href={href} className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors', active ? 'text-white bg-gray-700' : 'text-gray-300 hover:text-white hover:bg-gray-800')}>{icon}<span>{label}</span></Link>
+function NavItem({ href, icon, label, active, badge }: { href: string; icon: React.ReactNode; label: string; active: boolean; badge?: number }) {
+  const hasBadge = !!badge && badge > 0
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
+        active
+          ? 'text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-sm shadow-blue-900/40'
+          : hasBadge
+            ? 'text-amber-200 bg-amber-500/15 ring-1 ring-amber-400/40 hover:bg-amber-500/25'
+            : 'text-gray-300 hover:text-white hover:bg-white/10'
+      )}
+    >
+      {icon}
+      <span className="flex-1">{label}</span>
+      {hasBadge && (
+        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-bold rounded-full bg-amber-400 text-amber-950 animate-pulse">
+          {badge}
+        </span>
+      )}
+    </Link>
+  )
 }

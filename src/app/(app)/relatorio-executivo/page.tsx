@@ -6,6 +6,8 @@ import { subDays, addDays, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { formatDate } from '@/lib/utils'
 import { PrintButton } from '@/components/relatorio-executivo/PrintButton'
+import { RelatoriosNav } from '@/components/shared/RelatoriosNav'
+import { ResumoAutomatico } from '@/components/relatorio-executivo/ResumoAutomatico'
 import { FileBarChart, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 export default async function RelatorioExecutivoPage() {
@@ -158,10 +160,14 @@ export default async function RelatorioExecutivoPage() {
 
   return (
     <div className="max-w-4xl space-y-8 print:space-y-6">
+      <div className="print:hidden">
+        <RelatoriosNav active="executivo" />
+      </div>
+
       {/* Cabeçalho */}
       <div className="flex items-start justify-between print:mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="hidden print:flex text-2xl font-bold text-gray-900 items-center gap-2">
             <FileBarChart className="w-6 h-6 print:hidden" />
             Relatório Executivo
           </h1>
@@ -171,6 +177,21 @@ export default async function RelatorioExecutivoPage() {
         </div>
         <PrintButton />
       </div>
+
+      {/* Resumo executivo automático */}
+      <ResumoAutomatico
+        totalContractValue={totalContractValue}
+        atRiskValue={atRiskValue}
+        totalDemands30={totalDemands30}
+        completedDemands30={completedDemands30}
+        completionRate={completionRate}
+        completionRatePrev={completionRatePrev}
+        overdueDemands={overdueDemands}
+        pendingEvidence={pendingEvidence}
+        contractsExpiringSoonCount={contractsExpiringSoon.length}
+        contractsAtRiskCount={contractsAtRisk.length}
+        areasCriticas={areaStatus.filter((a) => a.status === 'Crítico').length}
+      />
 
       {/* Resumo Financeiro */}
       <section>

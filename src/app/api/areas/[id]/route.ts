@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!area) return apiError('Área não encontrada', 404)
 
   const body = await req.json()
-  const { name, description, sortOrder } = body
+  const { name, description, sortOrder, responsibleId } = body
 
   if (name !== undefined && (!name || name.trim().length < 2)) {
     return apiError('Nome inválido', 400)
@@ -45,6 +45,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(name !== undefined ? { name: name.trim() } : {}),
       ...(description !== undefined ? { description: description || null } : {}),
       ...(sortOrder !== undefined ? { sortOrder: Number(sortOrder) } : {}),
+      ...(responsibleId !== undefined ? { responsibleId: responsibleId || null } : {}),
     },
   })
 

@@ -22,6 +22,8 @@ export default async function MinhasTarefasPage() {
     prioridade:  t.prioridade,
     categoria:   t.categoria,
     prazo:       t.prazo?.toISOString() ?? null,
+    recorrente:  t.recorrente,
+    recorrencia: t.recorrencia,
     concluidaEm: t.concluidaEm?.toISOString() ?? null,
     createdAt:   t.createdAt.toISOString(),
     updatedAt:   t.updatedAt.toISOString(),

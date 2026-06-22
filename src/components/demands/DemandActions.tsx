@@ -3,25 +3,27 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
-import { ChevronDown, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { ChevronDown, CheckCircle, XCircle, Loader2, ClipboardCheck } from 'lucide-react'
 import type { Session } from 'next-auth'
 
-type DemandStatus = 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled'
+type DemandStatus = 'pending' | 'in_progress' | 'pending_approval' | 'blocked' | 'completed' | 'cancelled'
 
 const TRANSITIONS: Record<DemandStatus, { value: DemandStatus; label: string }[]> = {
-  pending:     [{ value: 'in_progress', label: 'Iniciar' }, { value: 'cancelled', label: 'Cancelar' }],
-  in_progress: [{ value: 'blocked', label: 'Marcar Bloqueada' }, { value: 'completed', label: 'Concluir' }, { value: 'cancelled', label: 'Cancelar' }],
-  blocked:     [{ value: 'in_progress', label: 'Retomar' }, { value: 'cancelled', label: 'Cancelar' }],
-  completed:   [],
-  cancelled:   [],
+  pending:          [{ value: 'in_progress', label: 'Iniciar' }, { value: 'cancelled', label: 'Cancelar' }],
+  in_progress:      [{ value: 'pending_approval', label: 'Enviar para Aprovação' }, { value: 'blocked', label: 'Marcar Bloqueada' }, { value: 'completed', label: 'Concluir' }, { value: 'cancelled', label: 'Cancelar' }],
+  pending_approval: [{ value: 'in_progress', label: 'Aprovar / Retomar' }, { value: 'blocked', label: 'Marcar Bloqueada' }, { value: 'cancelled', label: 'Cancelar' }],
+  blocked:          [{ value: 'in_progress', label: 'Retomar' }, { value: 'cancelled', label: 'Cancelar' }],
+  completed:        [],
+  cancelled:        [],
 }
 
 const STATUS_LABELS: Record<DemandStatus, string> = {
-  pending:     'Pendente',
-  in_progress: 'Em andamento',
-  blocked:     'Bloqueada',
-  completed:   'Concluída',
-  cancelled:   'Cancelada',
+  pending:          'Pendente',
+  in_progress:      'Em andamento',
+  pending_approval: 'Em aprovação',
+  blocked:          'Bloqueada',
+  completed:        'Concluída',
+  cancelled:        'Cancelada',
 }
 
 interface Props {
@@ -100,6 +102,7 @@ export function DemandActions({ demandId, currentStatus, session }: Props) {
                 >
                   {t.value === 'completed' && <CheckCircle className="w-4 h-4 text-green-500" />}
                   {t.value === 'cancelled' && <XCircle className="w-4 h-4 text-red-400" />}
+                  {t.value === 'pending_approval' && <ClipboardCheck className="w-4 h-4 text-amber-500" />}
                   {t.label}
                 </button>
               ))}

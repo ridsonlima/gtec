@@ -124,7 +124,7 @@ export function PainelAcumulado({ itens, tipo }: Props) {
               <Link
                 href={href}
                 onClick={() => setOpen(false)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] transition-colors"
               >
                 Criar medição
               </Link>

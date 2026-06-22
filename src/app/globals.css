@@ -23,7 +23,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --radius: 0.85rem;
   }
 
   .dark {
@@ -53,7 +53,32 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
+  /* Foco moderno e acessível em qualquer elemento interativo */
+  :focus-visible {
+    outline: 2px solid rgb(59 130 246 / 0.55);
+    outline-offset: 2px;
+  }
+}
+
+/* ─── Scrollbar moderna ──────────────────────────────────────────────────── */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover { background: rgb(148 163 184); background-clip: content-box; }
+  *::-webkit-scrollbar-track { background: transparent; }
 }
 
 /* Status colors */
@@ -84,4 +109,97 @@
 .dark .text-gray-500 { color: rgb(156 163 175); }
 .dark input, .dark select, .dark textarea { background-color: rgb(17 24 39); color: rgb(249 250 251); border-color: rgb(55 65 81); }
 
-.input { @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cdg-gold focus:border-transparent disabled:bg-gray-50; }
+/* ─── Fundo da página e superfícies claras (slate) no modo escuro ─────────── */
+.dark .bg-slate-50,
+.dark .bg-slate-100 { background-color: rgb(2 6 16); }
+.dark .bg-slate-200 { background-color: rgb(15 23 42); }
+
+/* Header e superfícies translúcidas brancas */
+.dark .bg-white\/95,
+.dark .bg-white\/90,
+.dark .bg-white\/85,
+.dark .bg-white\/80,
+.dark .bg-white\/70,
+.dark .bg-white\/60,
+.dark .bg-white\/50 { background-color: rgba(17, 24, 39, 0.9); }
+
+/* Caixa de busca e hovers translúcidos cinzas */
+.dark .bg-gray-100\/80,
+.dark .bg-gray-100\/70,
+.dark .bg-gray-50\/80 { background-color: rgba(31, 41, 55, 0.8); }
+.dark .bg-gray-200\/80,
+.dark .bg-gray-200\/70 { background-color: rgba(55, 65, 81, 0.8); }
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover { background-color: rgba(31, 41, 55, 0.7); }
+
+/* Bordas claras translúcidas */
+.dark .border-gray-200\/70,
+.dark .border-gray-200\/60,
+.dark .border-gray-200\/50,
+.dark .border-gray-100\/70 { border-color: rgba(31, 41, 55, 0.7); }
+
+/* Divisores */
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: rgb(31 41 55); }
+
+/* Texto auxiliar muito claro */
+.dark .text-gray-400 { color: rgb(120 130 145); }
+.dark .text-gray-300 { color: rgb(90 100 115); }
+
+/* Banners de destaque (-50) ficam escuros e translúcidos, mantendo a cor de acento */
+.dark .bg-green-50   { background-color: rgba(16, 64, 40, 0.35); }
+.dark .bg-emerald-50 { background-color: rgba(16, 64, 48, 0.35); }
+.dark .bg-blue-50    { background-color: rgba(20, 44, 80, 0.40); }
+.dark .bg-amber-50   { background-color: rgba(72, 52, 12, 0.40); }
+.dark .bg-orange-50  { background-color: rgba(72, 40, 12, 0.40); }
+.dark .bg-red-50     { background-color: rgba(72, 24, 28, 0.38); }
+.dark .bg-purple-50, .dark .bg-violet-50 { background-color: rgba(48, 30, 72, 0.40); }
+.dark .border-green-200, .dark .border-emerald-200 { border-color: rgba(34, 110, 70, 0.45); }
+.dark .border-blue-200   { border-color: rgba(40, 80, 140, 0.45); }
+.dark .border-amber-200, .dark .border-orange-200 { border-color: rgba(130, 95, 30, 0.45); }
+.dark .border-red-200    { border-color: rgba(130, 50, 55, 0.45); }
+.dark .border-purple-200, .dark .border-violet-200 { border-color: rgba(90, 60, 130, 0.45); }
+
+/* ─── Inputs modernos (maiores, cantos suaves) ───────────────────────────── */
+.input {
+  @apply w-full px-4 py-2.5 text-[15px] bg-white border border-gray-200 rounded-xl
+         placeholder:text-gray-400 transition-all duration-150
+         focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500
+         disabled:bg-gray-50 disabled:text-gray-400;
+  min-height: 2.75rem;
+}
+
+/* ─── Sistema de botões 2026 (grandes, arredondados, com profundidade) ────── */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl
+           transition-all duration-150 select-none whitespace-nowrap
+           active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none
+           focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25;
+    height: 2.75rem;            /* 44px — alvo de toque confortável */
+    padding-inline: 1.25rem;
+    font-size: 0.9375rem;
+  }
+  .btn-primary   { @apply btn bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md hover:shadow-blue-600/20; }
+  .btn-secondary { @apply btn bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 hover:border-gray-300; }
+  .btn-ghost     { @apply btn bg-transparent text-gray-600 hover:bg-gray-100; }
+  .btn-danger    { @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow-md hover:shadow-red-600/20; }
+  .btn-success   { @apply btn bg-green-600 text-white shadow-sm hover:bg-green-700; }
+
+  /* Modificadores de tamanho — definidos por último para vencer a altura padrão */
+  .btn-sm { height: 2.25rem; padding-inline: 0.875rem; font-size: 0.8125rem; @apply rounded-lg gap-1.5; }
+  .btn-lg { height: 3.25rem; padding-inline: 1.75rem; font-size: 1rem; @apply rounded-2xl; }
+
+  /* ─── Cards modernos ───────────────────────────────────────────────────── */
+  .card {
+    @apply bg-white border border-gray-200/80 rounded-2xl;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.03);
+  }
+  .card-hover { @apply transition-all duration-200 hover:shadow-lg hover:shadow-gray-300/40 hover:-translate-y-0.5; }
+}
+
+/* Eleva levemente cards/botões já existentes do app para um ar mais moderno */
+@layer utilities {
+  .elev-1 { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.03); }
+  .elev-2 { box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 6px -2px rgb(0 0 0 / 0.05); }
+}

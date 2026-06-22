@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { isDirector } from '@/lib/permissions'
 import { subDays, startOfWeek, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { BarChart2 } from 'lucide-react'
+import { BarChart2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { RelatoriosNav } from '@/components/shared/RelatoriosNav'
 
 export default async function AnalyticsPage() {
   const session = await auth()
@@ -86,15 +87,25 @@ export default async function AnalyticsPage() {
     return { name: area.name, total, onTime, breached, pending, pct }
   }).filter(Boolean) as { name: string; total: number; onTime: number; breached: number; pending: number; pct: number }[]
 
+  // ── Tendência histórica por área (últimos 28d vs 28d anteriores) ──────────
+  const ms28 = 28 * 86400000
+  const limiteRecente = new Date(today.getTime() - ms28)
+  const limiteAnterior = new Date(today.getTime() - 2 * ms28)
+
+  const tendenciaPorArea = areas.map((area) => {
+    const daArea = demands30d.filter((d) => d.areaId === area.id)
+    const concluidasRecentes = daArea.filter((d) => d.status === 'completed' && new Date(d.updatedAt) >= limiteRecente).length
+    const concluidasAnteriores = daArea.filter((d) => d.status === 'completed' && new Date(d.updatedAt) >= limiteAnterior && new Date(d.updatedAt) < limiteRecente).length
+    const criadasRecentes = daArea.filter((d) => new Date(d.createdAt) >= limiteRecente).length
+    const delta = concluidasRecentes - concluidasAnteriores
+    return { name: area.name, concluidasRecentes, concluidasAnteriores, criadasRecentes, delta }
+  }).filter((t) => t.concluidasRecentes > 0 || t.concluidasAnteriores > 0)
+    .sort((a, b) => b.delta - a.delta)
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <BarChart2 className="w-5 h-5" />
-          Analytics Executivo
-        </h1>
-        <p className="text-sm text-gray-500 mt-0.5">Visão consolidada de desempenho das áreas</p>
-      </div>
+      <RelatoriosNav active="tendencias" />
+      <p className="text-sm text-gray-500 -mt-4">Visão consolidada de desempenho e tendências das áreas</p>
 
       {/* Gráfico 1: Volume semanal */}
       <section>
@@ -163,6 +174,42 @@ export default async function AnalyticsPage() {
                 ))}
             </div>
           </div>
+        </section>
+      )}
+
+      {/* Tendência histórica por área */}
+      {tendenciaPorArea.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
+            Tendência de Conclusões por Área — Últimos 28 dias vs. período anterior
+          </h2>
+          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
+            {tendenciaPorArea.map((t, i) => {
+              const subindo = t.delta > 0
+              const descendo = t.delta < 0
+              const TrendIcon = subindo ? TrendingUp : descendo ? TrendingDown : Minus
+              const cor = subindo ? 'text-green-600' : descendo ? 'text-red-600' : 'text-gray-400'
+              const bg  = subindo ? 'bg-green-50' : descendo ? 'bg-red-50' : 'bg-gray-50'
+              return (
+                <div key={i} className="flex items-center gap-4 px-4 py-3">
+                  <p className="text-sm font-medium text-gray-700 flex-1 truncate">{t.name}</p>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400">Período anterior</p>
+                    <p className="text-sm font-semibold text-gray-500">{t.concluidasAnteriores}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400">Últimos 28d</p>
+                    <p className="text-sm font-bold text-gray-900">{t.concluidasRecentes}</p>
+                  </div>
+                  <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full ${bg} ${cor} w-20 justify-center`}>
+                    <TrendIcon className="w-3.5 h-3.5" />
+                    <span className="text-xs font-semibold">{t.delta > 0 ? `+${t.delta}` : t.delta}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-2">Verde = a área concluiu mais demandas que no período anterior. Foco no time, não em pessoas.</p>
         </section>
       )}
 

@@ -74,8 +74,9 @@ export default function NovaDemandaPage() {
 
   const { data: areasData } = useQuery({ queryKey: ['areas', 'leaf'], queryFn: () => fetch('/api/areas?leafOnly=true').then((r) => r.json()) })
   const { data: projectsData } = useQuery({
-    queryKey: ['projects-active'],
-    queryFn: () => fetch('/api/projects?status=in_progress').then((r) => r.json()),
+    queryKey: ['projects-by-contract', form.contractId],
+    queryFn: () => fetch(`/api/projects?contractId=${form.contractId}`).then((r) => r.json()),
+    enabled: Boolean(form.contractId),
   })
   const { data: contractsData } = useQuery({
     queryKey: ['contracts', form.areaId],
@@ -251,7 +252,12 @@ export default function NovaDemandaPage() {
 
         {!isInterArea && (
           <Field label="Contrato (opcional)">
-            <select value={form.contractId} onChange={set('contractId')} disabled={!form.areaId} className="input disabled:bg-gray-50 disabled:text-gray-400">
+            <select
+              value={form.contractId}
+              onChange={(e) => setForm((f) => ({ ...f, contractId: e.target.value, projectId: '' }))}
+              disabled={!form.areaId}
+              className="input disabled:bg-gray-50 disabled:text-gray-400"
+            >
               <option value="">Sem contrato específico</option>
               {contracts.map((c: any) => <option key={c.id} value={c.id}>{c.number} - {c.name}</option>)}
             </select>
@@ -263,12 +269,17 @@ export default function NovaDemandaPage() {
           </Field>
         )}
 
-        {projects.length > 0 && (
-          <Field label="Projeto (opcional)">
+        {!isInterArea && form.contractId && (
+          <Field label="Projeto / frente de serviço (opcional)">
             <select value={form.projectId} onChange={set('projectId')} className="input">
               <option value="">Sem projeto vinculado</option>
               {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
+            {projects.length === 0 && (
+              <Link href={`/contratos/${form.contractId}`} className="mt-1 inline-block text-xs text-blue-600 hover:underline">
+                Nenhum projeto neste contrato. Cadastrar na obra
+              </Link>
+            )}
           </Field>
         )}
 
@@ -416,7 +427,7 @@ export default function NovaDemandaPage() {
         <button
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50 transition-colors"
         >
           {saveMutation.isPending
             ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />

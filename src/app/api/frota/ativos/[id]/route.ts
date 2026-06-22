@@ -100,33 +100,60 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(body.status !== undefined && { status: body.status }),
       ...(body.observacoes !== undefined && { observacoes: body.observacoes }),
       ...(body.categoria !== undefined && { categoria: body.categoria }),
+      ...(body.condutorAtualId !== undefined && { condutorAtualId: body.condutorAtualId || null }),
     },
   })
 
   return apiSuccess(updated)
 }
 
-// DELETE /api/frota/ativos/[id]  — apenas master, sem vínculos
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+// DELETE /api/frota/ativos/[id]  — master ou admin
+// ?force=true  → remove registros vinculados antes de excluir
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (session.user.role !== 'master') return apiError('Apenas master pode excluir ativos', 403)
+  if (!['master', 'admin'].includes(session.user.role))
+    return apiError('Apenas master ou admin pode excluir ativos', 403)
+
+  const force = new URL(req.url).searchParams.get('force') === 'true'
 
   const ativo = await prisma.ativo.findUnique({
     where: { id: params.id },
     include: {
-      _count: {
-        select: { alocacoes: true, ordensServico: true, medicaoItens: true },
-      },
+      _count: { select: { alocacoes: true, ordensServico: true, medicaoItens: true, auditoriaItens: true } },
     },
   })
   if (!ativo) return apiError('Ativo não encontrado', 404)
 
-  if (ativo._count.alocacoes || ativo._count.ordensServico || ativo._count.medicaoItens) {
-    return apiError(
-      'Ativo possui registros vinculados. Inative-o em vez de excluir.',
-      400
-    )
+  const hasLinks =
+    ativo._count.alocacoes > 0 ||
+    ativo._count.ordensServico > 0 ||
+    ativo._count.medicaoItens > 0 ||
+    ativo._count.auditoriaItens > 0
+
+  if (hasLinks && !force) {
+    return apiSuccess({
+      requiresForce: true,
+      counts: ativo._count,
+      message: 'Ativo possui registros vinculados. Envie force=true para confirmar exclusão.',
+    })
+  }
+
+  if (hasLinks && force) {
+    // Remove pendências de auditoria → itens de auditoria → OS → alocações → itens de medição
+    const auditItemIds = await prisma.auditoriaItem.findMany({
+      where: { ativoId: params.id },
+      select: { id: true },
+    })
+    if (auditItemIds.length > 0) {
+      await prisma.pendenciaAuditoria.deleteMany({
+        where: { itemId: { in: auditItemIds.map((i) => i.id) } },
+      })
+    }
+    await prisma.auditoriaItem.deleteMany({ where: { ativoId: params.id } })
+    await prisma.ordemServico.deleteMany({ where: { ativoId: params.id } })
+    await prisma.alocacaoAtivo.deleteMany({ where: { ativoId: params.id } })
+    await prisma.medicaoLocacaoItem.deleteMany({ where: { ativoId: params.id } })
   }
 
   await prisma.ativo.delete({ where: { id: params.id } })

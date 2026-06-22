@@ -28,18 +28,18 @@ export const UpdateDemandSchema = z.object({
   blockers: z.string().max(1000).optional().nullable(),
   supportNeeded: z.string().max(1000).optional().nullable(),
   status: z
-    .enum(['pending', 'in_progress', 'blocked', 'completed', 'cancelled'])
+    .enum(['pending', 'in_progress', 'pending_approval', 'blocked', 'completed', 'cancelled'])
     .optional(),
 })
 
 export const CreateDemandUpdateSchema = z.object({
   content: z.string().min(1, 'Conteúdo obrigatório').max(3000),
   statusBefore: z
-    .enum(['pending', 'in_progress', 'blocked', 'completed', 'cancelled'])
+    .enum(['pending', 'in_progress', 'pending_approval', 'blocked', 'completed', 'cancelled'])
     .optional()
     .nullable(),
   statusAfter: z
-    .enum(['pending', 'in_progress', 'blocked', 'completed', 'cancelled'])
+    .enum(['pending', 'in_progress', 'pending_approval', 'blocked', 'completed', 'cancelled'])
     .optional()
     .nullable(),
 })

@@ -26,6 +26,14 @@ export async function GET(req: NextRequest) {
       name: true,
       email: true,
       role: true,
+      isActive: true,
+      lastLoginAt: true,
+      loginCount: true,
+      createdAt: true,
+      approvoTipoAcesso: true,
+      approvoCodUsuario: true,
+      approvoCodPerfil: true,
+      approvoCodUsuarioMega: true,
       areaScopes: {
         select: {
           areaId: true,

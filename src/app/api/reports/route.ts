@@ -126,6 +126,7 @@ export async function POST(req: NextRequest) {
       data: {
         areaId: data.areaId,
         contractId: data.contractId ?? null,
+        projectId: data.projectId ?? null,
         authorId: session.user.id,
         title: data.title,
         period: data.period,

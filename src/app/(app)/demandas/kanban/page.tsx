@@ -3,8 +3,11 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { getUserAreaIds } from '@/lib/permissions'
 import { KanbanBoard } from '@/components/demands/KanbanBoard'
+import { getAusenciasMap } from '@/lib/ausencias'
 import { LayoutGrid, List } from 'lucide-react'
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic'
 
 export default async function KanbanPage() {
   const session = await auth()
@@ -29,8 +32,27 @@ export default async function KanbanPage() {
     take: 200,
     include: {
       area:        { select: { name: true } },
-      responsible: { select: { name: true } },
+      responsible: { select: { id: true, name: true } },
     },
+  })
+
+  const ausenciasMap = await getAusenciasMap(demands.map((d) => d.responsibleId))
+  // Mapa de "última visualização" do usuário → sinaliza cards com novidade
+  const views = await prisma.demandView.findMany({
+    where: { userId: session.user.id, demandId: { in: demands.map((d) => d.id) } },
+    select: { demandId: true, viewedAt: true },
+  })
+  const viewMap = new Map(views.map((v) => [v.demandId, v.viewedAt]))
+
+  const demandsEnriched = demands.map((d) => {
+    const aus = d.responsibleId ? ausenciasMap.get(d.responsibleId) : undefined
+    const viewedAt = viewMap.get(d.id)
+    const unread = !viewedAt || new Date(d.updatedAt) > new Date(viewedAt)
+    return {
+      ...d,
+      substituicaoInfo: aus ? { substitutoNome: aus.substitutoNome } : null,
+      unread,
+    }
   })
 
   return (
@@ -56,7 +78,7 @@ export default async function KanbanPage() {
         </Link>
       </div>
 
-      <KanbanBoard initialDemands={demands} />
+      <KanbanBoard initialDemands={demandsEnriched} />
     </div>
   )
 }

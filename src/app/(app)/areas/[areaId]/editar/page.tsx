@@ -13,6 +13,8 @@ const AREA_SLUG_TO_ID_MAP: Record<string, string> = {
   'obras-proprias': 'OBRAS_PROP',
   'obras-terceirizadas': 'OBRAS_TERC',
   sesmt: 'SESMT',
+  'meio-ambiente': 'SESMT_MA',
+  'seg-trabalho': 'SESMT_SEG',
   equipamentos: 'EQUIP',
 }
 
@@ -21,7 +23,13 @@ export default function EditAreaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ name: '', description: '', sortOrder: '' })
+  const [form, setForm] = useState({ name: '', description: '', sortOrder: '', responsibleId: '' })
+
+  const { data: usersData } = useQuery({
+    queryKey: ['users-area-resp'],
+    queryFn: () => fetch('/api/users').then((r) => r.json()),
+  })
+  const usuarios: { id: string; name: string }[] = usersData?.data ?? usersData ?? []
 
   const { data, isLoading } = useQuery({
     queryKey: ['area', params.areaId],
@@ -44,6 +52,7 @@ export default function EditAreaPage() {
       name: area.name ?? '',
       description: area.description ?? '',
       sortOrder: String(area.sortOrder ?? 0),
+      responsibleId: area.responsibleId ?? '',
     })
   }, [area])
 
@@ -63,6 +72,7 @@ export default function EditAreaPage() {
         name: form.name,
         description: form.description,
         sortOrder: form.sortOrder !== '' ? Number(form.sortOrder) : undefined,
+        responsibleId: form.responsibleId || null,
       }),
     })
     const d = await res.json()
@@ -114,6 +124,18 @@ export default function EditAreaPage() {
         </label>
 
         <label className="block text-sm font-medium text-gray-700 space-y-1">
+          <span>Responsável pela área</span>
+          <select
+            value={form.responsibleId}
+            onChange={(e) => setForm((f) => ({ ...f, responsibleId: e.target.value }))}
+            className="input"
+          >
+            <option value="">Sem responsável definido</option>
+            {usuarios.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </label>
+
+        <label className="block text-sm font-medium text-gray-700 space-y-1">
           <span>Ordem de exibição</span>
           <input
             type="number"
@@ -135,7 +157,7 @@ export default function EditAreaPage() {
           </Link>
           <button
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
             {loading ? 'Salvando...' : 'Salvar alterações'}

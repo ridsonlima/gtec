@@ -5,6 +5,7 @@ import { isManagerOrAbove } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { Plus, Calendar, CheckCircle2, Clock, Lightbulb, ArrowRight, Users, Building2, Globe } from 'lucide-react'
+import { GerarPautaSemanalBtn } from '@/components/pauta/GerarPautaSemanalBtn'
 
 const STATUS_LABELS: Record<string, string> = {
   draft:     'Rascunho',
@@ -86,12 +87,25 @@ export default async function PautaPage({ searchParams }: { searchParams: SP }) 
           <h1 className="text-xl font-bold text-gray-900">Pauta de Reuniões</h1>
           <p className="text-sm text-gray-500 mt-0.5">Gerencie pautas e registros de reuniões</p>
         </div>
-        <Link
-          href="/pauta/nova"
-          className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nova Pauta
+        <div className="flex items-start gap-2">
+          <GerarPautaSemanalBtn />
+          <Link
+            href="/pauta/nova"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Pauta
+          </Link>
+        </div>
+      </div>
+
+      {/* Sub-navegação: Reuniões | Decisões */}
+      <div className="flex gap-1 border-b border-gray-200">
+        <span className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-700">
+          Reuniões
+        </span>
+        <Link href="/decisoes" className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors">
+          Decisões
         </Link>
       </div>
 
@@ -171,7 +185,7 @@ export default async function PautaPage({ searchParams }: { searchParams: SP }) 
           <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Nenhuma pauta ainda</p>
           <p className="text-sm text-gray-400 mt-1">Crie uma nova pauta para organizar a próxima reunião</p>
-          <Link href="/pauta/nova" className="inline-flex items-center gap-1.5 mt-4 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+          <Link href="/pauta/nova" className="inline-flex items-center gap-1.5 mt-4 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] transition-colors">
             <Plus className="w-4 h-4" /> Nova Pauta
           </Link>
         </div>

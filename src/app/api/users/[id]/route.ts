@@ -36,7 +36,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (activeMasters <= 1) return apiError('Não é possível remover o último usuário master', 400)
   }
 
-  const userData: any = { name, email, role }
+  const toIntOrNull = (v: unknown) => (v === '' || v == null ? null : Number.isNaN(Number(v)) ? null : Number(v))
+
+  const userData: any = {
+    name, email, role,
+    approvoTipoAcesso:     body.approvoTipoAcesso ? String(body.approvoTipoAcesso) : 'C',
+    approvoCodUsuario:     toIntOrNull(body.approvoCodUsuario),
+    approvoCodPerfil:      toIntOrNull(body.approvoCodPerfil),
+    approvoCodUsuarioMega: toIntOrNull(body.approvoCodUsuarioMega),
+  }
   if (body.password && String(body.password).trim()) {
     userData.passwordHash = await bcrypt.hash(String(body.password), 12)
   }

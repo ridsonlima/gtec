@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const CreateReportSchema = z.object({
   areaId: z.string().uuid('ID de área inválido'),
   contractId: z.string().uuid().optional().nullable(),
+  projectId: z.string().uuid().optional().nullable(),
   title: z.string().min(3, 'Título muito curto').max(200),
   period: z.string().max(50).optional(),
   executiveSummary: z.string().max(2000).optional(),

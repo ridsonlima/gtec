@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         return {
           allowedContentTypes: ALLOWED_MIME_TYPES,
           maximumSizeInBytes: MAX_FILE_SIZE,
+          addRandomSuffix: true,
           tokenPayload: JSON.stringify({ userId }),
         }
       },

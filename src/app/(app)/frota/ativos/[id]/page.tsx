@@ -8,6 +8,10 @@ import { ChevronLeft, Package, Truck, Tag, Banknote, Calendar, Wrench, Clipboard
 import { AlocarAtivoModal } from '@/components/frota/AlocarAtivoModal'
 import { DesalocarAtivoBtn } from '@/components/frota/DesalocarAtivoBtn'
 import { NovaOSModal } from '@/components/frota/NovaOSModal'
+import { ExcluirAtivoBtn } from '@/components/frota/ExcluirAtivoBtn'
+import { EditarAtivoModal } from '@/components/frota/EditarAtivoModal'
+import { InativarAtivoBtn } from '@/components/frota/InativarAtivoBtn'
+import { VeiculoGestaoPanel } from '@/components/frota/VeiculoGestaoPanel'
 
 const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
   disponivel: { label: 'Disponível',  cls: 'bg-green-50 text-green-700 border-green-200',   dot: 'bg-green-400' },
@@ -79,6 +83,7 @@ export default async function FrotaAtivoDetalhePage({ params }: { params: { id: 
   const osAbertas     = ativo.ordensServico.filter((o) => ['aberta', 'em_execucao'].includes(o.status))
   const osHist        = ativo.ordensServico.filter((o) => ['concluida', 'cancelada'].includes(o.status))
   const canEdit       = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canDelete     = ['master', 'admin'].includes(session.user.role)
   const TipoIcon      = ativo.tipo === 'veiculo' ? Truck : Package
 
   const custoTotalOS = ativo.ordensServico
@@ -117,6 +122,9 @@ export default async function FrotaAtivoDetalhePage({ params }: { params: { id: 
             {ativo.status === 'disponivel' && <AlocarAtivoModal ativoId={ativo.id} ativoTag={ativo.tag} ativoDescricao={ativo.descricao} />}
             {ativo.status === 'alocado'    && <DesalocarAtivoBtn ativoId={ativo.id} ativoTag={ativo.tag} />}
             {ativo.status !== 'inativo'    && <NovaOSModal ativoId={ativo.id} ativoTag={ativo.tag} />}
+            <EditarAtivoModal ativo={ativo} />
+            {ativo.status !== 'alocado' && <InativarAtivoBtn ativoId={ativo.id} status={ativo.status} />}
+            {canDelete && <ExcluirAtivoBtn ativoId={ativo.id} ativoTag={ativo.tag} />}
           </div>
         )}
       </div>
@@ -343,6 +351,8 @@ export default async function FrotaAtivoDetalhePage({ params }: { params: { id: 
           )}
         </div>
       </div>
+
+      {ativo.tipo === 'veiculo' && <VeiculoGestaoPanel ativoId={ativo.id} />}
     </div>
   )
 }

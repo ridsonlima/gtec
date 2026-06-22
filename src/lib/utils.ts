@@ -49,6 +49,7 @@ export const PRIORITY_LABELS: Record<string, string> = {
 export const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendente',
   in_progress: 'Em andamento',
+  pending_approval: 'Em aprovação',
   blocked: 'Bloqueada',
   completed: 'Concluída',
   cancelled: 'Cancelada',

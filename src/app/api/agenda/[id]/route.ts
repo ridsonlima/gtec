@@ -42,6 +42,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json()
   const {
+    title,
+    objective,
+    tipo,
     status,
     evolucoes,
     situacao,
@@ -53,8 +56,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const VALID_STATUS = ['draft', 'preparing', 'scheduled', 'done', 'held', 'finalized', 'cancelled']
   if (status && !VALID_STATUS.includes(status)) return apiError('Status inválido', 400)
+  const VALID_TIPO = ['diretoria', 'interarea', 'externo']
+  if (tipo && !VALID_TIPO.includes(tipo)) return apiError('Tipo inválido', 400)
+  if (title !== undefined && !String(title).trim()) return apiError('Título obrigatório', 400)
 
   const data: Record<string, unknown> = {}
+  if (title          !== undefined) data.title          = String(title).trim()
+  if (objective      !== undefined) data.objective      = objective      || null
+  if (tipo           !== undefined) data.tipo           = tipo
   if (status         !== undefined) data.status         = status
   if (evolucoes      !== undefined) data.evolucoes      = evolucoes      || null
   if (situacao       !== undefined) data.situacao       = situacao       || null
@@ -69,4 +78,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   })
 
   return apiSuccess(updated)
+}
+
+// DELETE /api/agenda/[id] — exclui a reunião/pauta (e seus itens em cascata)
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const session = await auth()
+  if (!session) return apiError('Não autenticado', 401)
+  if (!isManagerOrAbove(session.user.role)) return apiError('Sem permissão', 403)
+
+  const agenda = await prisma.meetingAgenda.findUnique({ where: { id: params.id }, select: { id: true } })
+  if (!agenda) return apiError('Pauta não encontrada', 404)
+
+  // Remove os itens primeiro (relationMode prisma não cascateia automaticamente)
+  await prisma.agendaItem.deleteMany({ where: { agendaId: params.id } })
+  await prisma.meetingAgenda.delete({ where: { id: params.id } })
+
+  return apiSuccess({ deleted: true })
 }

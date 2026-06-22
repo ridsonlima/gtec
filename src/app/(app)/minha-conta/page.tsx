@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Save, User, Shield, MapPin } from 'lucide-react'
+import { Save, User, Shield, MapPin, ClipboardCheck, CheckCircle2, ExternalLink } from 'lucide-react'
 import { getRoleLabel } from '@/lib/role-labels'
 
 export default function MinhaContaPage() {
@@ -13,6 +13,56 @@ export default function MinhaContaPage() {
   const [message, setMessage] = useState('')
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
+
+  // ── Approvo (configuração individual) ──────────────────────────
+  const [apTipo, setApTipo]               = useState('C')
+  const [apCodUsuario, setApCodUsuario]   = useState('')
+  const [apCodPerfil, setApCodPerfil]     = useState('')
+  const [apCodMega, setApCodMega]         = useState('')
+  const [apConfigured, setApConfigured]   = useState(false)
+  const [apMessage, setApMessage] = useState('')
+  const [apError, setApError]     = useState('')
+  const [apLoading, setApLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/me/approvo')
+      .then((r) => r.json())
+      .then((res) => {
+        const d = res?.data
+        if (!d) return
+        setApTipo(d.approvoTipoAcesso ?? 'C')
+        setApCodUsuario(d.approvoCodUsuario != null ? String(d.approvoCodUsuario) : '')
+        setApCodPerfil(d.approvoCodPerfil != null ? String(d.approvoCodPerfil) : '')
+        setApCodMega(d.approvoCodUsuarioMega != null ? String(d.approvoCodUsuarioMega) : '')
+        setApConfigured(Boolean(d.configurado))
+      })
+      .catch(() => {})
+  }, [])
+
+  async function submitApprovo(e: React.FormEvent) {
+    e.preventDefault()
+    setApMessage('')
+    setApError('')
+    setApLoading(true)
+    const res = await fetch('/api/me/approvo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        approvoTipoAcesso: apTipo || 'C',
+        approvoCodUsuario: apCodUsuario,
+        approvoCodPerfil: apCodPerfil,
+        approvoCodUsuarioMega: apCodMega,
+      }),
+    })
+    const data = await res.json()
+    setApLoading(false)
+    if (!res.ok || data?.success === false) {
+      setApError(data?.error ?? 'Não foi possível salvar a configuração do Approvo.')
+      return
+    }
+    setApConfigured(Boolean(data?.data?.configurado))
+    setApMessage('Configuração do Approvo salva. Acesse a aba Aprovações para ver a sua fila.')
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -106,6 +156,115 @@ export default function MinhaContaPage() {
           </div>
         </div>
       )}
+
+      {/* Configuração do Approvo */}
+      <form onSubmit={submitApprovo} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+              <ClipboardCheck className="w-4 h-4" />
+              Integração Approvo
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Conecte sua conta para ver a sua fila de aprovações na aba <strong>Aprovações</strong>.
+              Cada usuário vê apenas a própria fila.
+            </p>
+          </div>
+          {apConfigured ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full whitespace-nowrap">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Configurado
+            </span>
+          ) : (
+            <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full whitespace-nowrap">
+              Não configurado
+            </span>
+          )}
+        </div>
+
+        {apMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">
+            {apMessage}
+          </div>
+        )}
+        {apError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">
+            {apError}
+          </div>
+        )}
+
+        <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs px-3 py-2 rounded-lg leading-relaxed">
+          <p className="font-semibold mb-1">Como encontrar os seus códigos</p>
+          No Approvo (MegaERP), abra o navegador em <em>Ferramentas do desenvolvedor (F12) → aba Network</em>,
+          carregue a sua lista de documentos e localize a chamada <code>ObterCardDocumentos</code>.
+          No corpo da requisição estão: <code>codUsuario</code>, <code>codPerfil</code> e <code>codUsuarioMega</code>.
+          Em caso de dúvida, peça ao administrador do MegaERP.
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block text-sm font-medium text-gray-700 space-y-1">
+            <span>Código do usuário <span className="text-xs text-gray-400">(codUsuario)</span></span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={apCodUsuario}
+              onChange={(e) => setApCodUsuario(e.target.value)}
+              className="input"
+              placeholder="Ex.: 111"
+            />
+          </label>
+          <label className="block text-sm font-medium text-gray-700 space-y-1">
+            <span>Código do perfil <span className="text-xs text-gray-400">(codPerfil)</span></span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={apCodPerfil}
+              onChange={(e) => setApCodPerfil(e.target.value)}
+              className="input"
+              placeholder="Ex.: 118"
+            />
+          </label>
+          <label className="block text-sm font-medium text-gray-700 space-y-1">
+            <span>Código no Mega <span className="text-xs text-gray-400">(codUsuarioMega)</span></span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={apCodMega}
+              onChange={(e) => setApCodMega(e.target.value)}
+              className="input"
+              placeholder="Ex.: 41"
+            />
+          </label>
+          <label className="block text-sm font-medium text-gray-700 space-y-1">
+            <span>Tipo de acesso <span className="text-xs text-gray-400">(tipoAcesso)</span></span>
+            <input
+              type="text"
+              value={apTipo}
+              onChange={(e) => setApTipo(e.target.value)}
+              className="input"
+              placeholder="C"
+              maxLength={2}
+            />
+          </label>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <a
+            href="https://approvocdg.megaerp.online/Alcada/Alcada.aspx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> Abrir Approvo
+          </a>
+          <button
+            disabled={apLoading}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-cdg-blue text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-60"
+          >
+            <Save className="w-4 h-4" />
+            {apLoading ? 'Salvando...' : 'Salvar configuração'}
+          </button>
+        </div>
+      </form>
 
       {/* Troca de senha */}
       <form onSubmit={submit} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">

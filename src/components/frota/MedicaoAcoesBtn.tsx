@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Send, CheckCircle, XCircle, FileText, CreditCard,
-  ClipboardCheck, RotateCcw, AlertCircle,
+  ClipboardCheck, RotateCcw, AlertCircle, Trash2, Pencil, Check, X,
 } from 'lucide-react'
 
 type Status = 'rascunho' | 'aguard_supervisor' | 'enviada' | 'aprovada' | 'guia_gerada' | 'paga' | 'rejeitada'
@@ -13,21 +13,29 @@ interface Props {
   medicaoId: string
   status: Status
   role: string
+  observacoes?: string | null
 }
 
 const INPUT = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 const LABEL = 'block text-xs font-medium text-gray-700 mb-1'
 
-export function MedicaoAcoesBtn({ medicaoId, status, role }: Props) {
+export function MedicaoAcoesBtn({ medicaoId, status, role, observacoes: obsInicial }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Modals
+  // Modals de fluxo
   const [showConferir, setShowConferir] = useState(false)
   const [showDevolver, setShowDevolver] = useState(false)
   const [showRejeitar, setShowRejeitar] = useState(false)
   const [showPagamento, setShowPagamento] = useState(false)
+
+  // Excluir
+  const [showExcluir, setShowExcluir] = useState(false)
+
+  // Editar observações
+  const [showEditObs, setShowEditObs] = useState(false)
+  const [obsEdit, setObsEdit] = useState(obsInicial ?? '')
 
   const [notaSupervisor, setNotaSupervisor] = useState('')
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
@@ -51,6 +59,31 @@ export function MedicaoAcoesBtn({ medicaoId, status, role }: Props) {
     } finally { setLoading(false) }
   }
 
+  async function excluir() {
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`/api/frota/medicoes/${medicaoId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Erro ao excluir'); return }
+      router.push('/frota/medicoes')
+    } finally { setLoading(false) }
+  }
+
+  async function salvarObs() {
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`/api/frota/medicoes/${medicaoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ observacoes: obsEdit.trim() || null }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Erro ao salvar'); return }
+      setShowEditObs(false)
+      router.refresh()
+    } finally { setLoading(false) }
+  }
+
   // Botão "Voltar etapa" — visível para master/admin em etapas intermediárias
   const podeVoltar = canMaster && ['aguard_supervisor', 'enviada', 'aprovada', 'guia_gerada'].includes(status)
   const ETAPA_ANTERIOR: Record<string, string> = {
@@ -59,6 +92,9 @@ export function MedicaoAcoesBtn({ medicaoId, status, role }: Props) {
     aprovada: 'Enviada',
     guia_gerada: 'Aprovada',
   }
+
+  const podeEditar = canGestor && ['rascunho', 'rejeitada'].includes(status)
+  const podeExcluir = canMaster && status === 'rascunho'
 
   return (
     <div className="flex flex-col gap-3 items-end">
@@ -70,12 +106,36 @@ export function MedicaoAcoesBtn({ medicaoId, status, role }: Props) {
       )}
 
       <div className="flex gap-2 flex-wrap justify-end">
+        {/* ── Editar observações (rascunho/rejeitada) ── */}
+        {podeEditar && !showEditObs && (
+          <button
+            onClick={() => setShowEditObs(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white text-gray-600 text-sm rounded-lg border border-gray-200 hover:bg-gray-50"
+            title="Editar observações da medição"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Editar obs.
+          </button>
+        )}
+
+        {/* ── Excluir (rascunho, master/admin) ── */}
+        {podeExcluir && !showExcluir && (
+          <button
+            onClick={() => setShowExcluir(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white text-red-600 text-sm rounded-lg border border-red-200 hover:bg-red-50"
+            title="Excluir esta medição"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Excluir
+          </button>
+        )}
+
         {/* ── ETAPA 1: Rascunho ── */}
         {status === 'rascunho' && canGestor && (
           <button
             onClick={() => action('enviar')}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
             {loading ? 'Enviando…' : 'Enviar para supervisor'}
@@ -276,6 +336,67 @@ export function MedicaoAcoesBtn({ medicaoId, status, role }: Props) {
               className="px-3 py-1.5 text-xs text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
             >
               {loading ? 'Rejeitando…' : 'Confirmar rejeição'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Inline: Editar observações ── */}
+      {showEditObs && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3 w-full max-w-sm">
+          <p className="text-sm font-medium text-blue-900 flex items-center gap-1.5">
+            <Pencil className="w-3.5 h-3.5" />
+            Editar observações
+          </p>
+          <textarea
+            value={obsEdit}
+            onChange={(e) => setObsEdit(e.target.value)}
+            rows={3}
+            placeholder="Informações adicionais para esta medição…"
+            className={`${INPUT} resize-none`}
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowEditObs(false); setObsEdit(obsInicial ?? '') }}
+              className="px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg"
+            >
+              <X className="w-3 h-3 inline mr-1" />Cancelar
+            </button>
+            <button
+              onClick={salvarObs}
+              disabled={loading}
+              className="px-3 py-1.5 text-xs text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Check className="w-3 h-3 inline mr-1" />{loading ? 'Salvando…' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirmação de exclusão ── */}
+      {showExcluir && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3 w-full max-w-sm">
+          <p className="text-sm font-medium text-red-800 flex items-center gap-1.5">
+            <Trash2 className="w-4 h-4" />
+            Excluir medição?
+          </p>
+          <p className="text-xs text-red-700">
+            Esta ação é irreversível. Todos os itens desta medição serão removidos permanentemente.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowExcluir(false)}
+              className="px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={excluir}
+              disabled={loading}
+              className="px-3 py-1.5 text-xs text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              {loading ? 'Excluindo…' : 'Sim, excluir'}
             </button>
           </div>
         </div>

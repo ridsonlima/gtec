@@ -36,3 +36,10 @@ Thumbs.db
 .vercel
 
 .vercel
+.env.vercel.tmp
+
+# Build info / cache
+tsconfig.tsbuildinfo
+
+# Local agent settings
+.claude/

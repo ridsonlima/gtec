@@ -5,6 +5,7 @@ import type { Session } from 'next-auth'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { CommandPalette } from './CommandPalette'
+import { AusenciaBanner } from '@/components/shared/AusenciaBanner'
 
 interface AppShellProps {
   session: Session
@@ -28,10 +29,10 @@ export function AppShell({ session, children }: AppShellProps) {
   }, [])
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar desktop */}
       <div className="hidden lg:flex lg:flex-shrink-0">
-        <div className="w-60 flex flex-col">
+        <div className="w-64 flex flex-col">
           <Sidebar session={session} />
         </div>
       </div>
@@ -43,7 +44,7 @@ export function AppShell({ session, children }: AppShellProps) {
             className="fixed inset-0 bg-black/40"
             onClick={() => setSidebarOpen(false)}
           />
-          <div className="relative flex flex-col w-60 bg-white shadow-xl">
+          <div className="relative flex flex-col w-64 bg-white shadow-2xl">
             <Sidebar session={session} onClose={() => setSidebarOpen(false)} />
           </div>
         </div>
@@ -57,7 +58,8 @@ export function AppShell({ session, children }: AppShellProps) {
           onSearchClick={() => setPaletteOpen(true)}
         />
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <AusenciaBanner />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             {children}
           </div>
         </main>

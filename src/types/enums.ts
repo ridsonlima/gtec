@@ -6,13 +6,13 @@
 
 export type Role = 'master' | 'admin' | 'director' | 'manager' | 'supervisor' | 'viewer'
 export type ReportStatus = 'draft' | 'published' | 'archived'
-export type DemandStatus = 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled'
+export type DemandStatus = 'pending' | 'in_progress' | 'pending_approval' | 'blocked' | 'completed' | 'cancelled'
 export type DemandPriority = 'critical' | 'high' | 'medium' | 'low'
 export type DemandOrigin = 'report' | 'meeting' | 'director' | 'manager' | 'contract' | 'audit' | 'other'
 export type ContractStatus = 'active' | 'suspended' | 'closed' | 'at_risk' | 'delayed'
 export type CommentType = 'observation' | 'clarification' | 'follow_up' | 'evidence_request'
 export type EvidenceStatus = 'pending' | 'received' | 'rejected'
-export type ObjectType = 'report' | 'demand' | 'contract' | 'project' | 'comment' | 'evidence_request'
+export type ObjectType = 'report' | 'demand' | 'contract' | 'project' | 'comment' | 'evidence_request' | 'relatorio_acomp' | 'interferencia'
 export type NotificationType =
   | 'comment'
   | 'follow_up'

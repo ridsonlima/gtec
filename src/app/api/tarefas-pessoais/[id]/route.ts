@@ -16,21 +16,25 @@ export async function PATCH(
   if (tarefa.userId !== session.user.id) return apiError('Sem permissão', 403)
 
   const body = await req.json()
-  const { titulo, descricao, status, prioridade, categoria, prazo } = body
+  const { titulo, descricao, status, prioridade, categoria, prazo, recorrente, recorrencia } = body
 
   const STATUS_VALIDOS = ['pendente', 'em_andamento', 'concluida', 'cancelada']
   const PRIORIDADES    = ['baixa', 'media', 'alta', 'urgente']
+  const RECORRENCIAS   = ['diaria', 'semanal', 'quinzenal', 'mensal']
 
   if (status && !STATUS_VALIDOS.includes(status)) return apiError('Status inválido', 400)
   if (prioridade && !PRIORIDADES.includes(prioridade)) return apiError('Prioridade inválida', 400)
+  if (recorrencia && !RECORRENCIAS.includes(recorrencia)) return apiError('Recorrência inválida', 400)
 
   const data: Record<string, unknown> = {}
-  if (titulo !== undefined)    data.titulo    = titulo?.trim() || tarefa.titulo
-  if (descricao !== undefined) data.descricao = descricao?.trim() || null
-  if (status !== undefined)    data.status    = status
-  if (prioridade !== undefined) data.prioridade = prioridade
-  if (categoria !== undefined) data.categoria = categoria?.trim() || null
-  if (prazo !== undefined)     data.prazo     = prazo ? new Date(prazo) : null
+  if (titulo !== undefined)      data.titulo      = titulo?.trim() || tarefa.titulo
+  if (descricao !== undefined)   data.descricao   = descricao?.trim() || null
+  if (status !== undefined)      data.status      = status
+  if (prioridade !== undefined)  data.prioridade  = prioridade
+  if (categoria !== undefined)   data.categoria   = categoria?.trim() || null
+  if (prazo !== undefined)       data.prazo       = prazo ? new Date(prazo) : null
+  if (recorrente !== undefined)  data.recorrente  = !!recorrente
+  if (recorrencia !== undefined) data.recorrencia = recorrente && recorrencia ? recorrencia : null
 
   // Marca conclusão automática
   if (status === 'concluida' && tarefa.status !== 'concluida') {

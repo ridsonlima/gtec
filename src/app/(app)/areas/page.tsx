@@ -11,6 +11,8 @@ const AREA_SLUGS: Record<string, string> = {
   OBRAS_PROP: 'obras-proprias',
   OBRAS_TERC: 'obras-terceirizadas',
   SESMT: 'sesmt',
+  SESMT_MA: 'meio-ambiente',
+  SESMT_SEG: 'seg-trabalho',
   EQUIP: 'equipamentos',
 }
 

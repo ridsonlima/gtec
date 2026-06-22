@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { canAccessArea } from '@/lib/permissions'
+import { audit, ACTIONS } from '@/lib/audit'
 
 async function getMedicaoOrFail(medicaoId: string, contractId: string, session: any) {
   const medicao = await prisma.medicao.findUnique({
@@ -35,6 +36,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     include: { adiantamentos: true, createdBy: { select: { id: true, name: true } } },
   })
 
+  await audit({
+    userId: session.user.id,
+    action: ACTIONS.MEDICAO_UPDATED,
+    objectType: 'medicao',
+    objectId: params.medicaoId,
+    metadata: {
+      contractId: params.id,
+      valorProduzido: updated.valorProduzido,
+      valorAprovado: updated.valorAprovado,
+      valorFaturado: updated.valorFaturado,
+    },
+  })
+
   return apiSuccess(updated)
 }
 
@@ -43,9 +57,22 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!session) return apiError('Não autenticado', 401)
   if (!['master', 'admin', 'director'].includes(session.user.role)) return apiError('Sem permissão', 403)
 
-  const { error } = await getMedicaoOrFail(params.medicaoId, params.id, session)
+  const { error, medicao } = await getMedicaoOrFail(params.medicaoId, params.id, session)
   if (error) return error
 
   await prisma.medicao.delete({ where: { id: params.medicaoId } })
+
+  await audit({
+    userId: session.user.id,
+    action: ACTIONS.MEDICAO_DELETED,
+    objectType: 'medicao',
+    objectId: params.medicaoId,
+    metadata: {
+      contractId: params.id,
+      competencia: medicao ? `${medicao.competenciaMes}/${medicao.competenciaAno}` : undefined,
+      valorFaturado: medicao?.valorFaturado,
+    },
+  })
+
   return apiSuccess({ deleted: true })
 }

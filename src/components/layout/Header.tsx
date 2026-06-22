@@ -49,11 +49,11 @@ export function Header({ session, onMenuClick, onSearchClick }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center gap-2 flex-shrink-0">
+    <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-lg border-b border-gray-200/70 px-4 sm:px-6 h-16 flex items-center gap-3 flex-shrink-0">
       {/* Botão menu mobile */}
       <button
         onClick={onMenuClick}
-        className="lg:hidden text-gray-500 hover:text-gray-700 p-1"
+        className="lg:hidden text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded-xl transition-colors"
       >
         <Menu className="w-5 h-5" />
       </button>
@@ -61,11 +61,11 @@ export function Header({ session, onMenuClick, onSearchClick }: HeaderProps) {
       {/* Botão de busca */}
       <button
         onClick={onSearchClick}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+        className="flex items-center gap-2.5 pl-4 pr-3 h-10 text-sm text-gray-400 bg-gray-100/80 hover:bg-gray-200/80 rounded-xl transition-colors"
       >
         <Search className="w-4 h-4" />
         <span className="hidden sm:inline">Buscar…</span>
-        <kbd className="hidden sm:inline-flex text-xs bg-white text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 ml-1">
+        <kbd className="hidden sm:inline-flex text-xs bg-white text-gray-400 px-1.5 py-0.5 rounded-md border border-gray-200 ml-1">
           Ctrl K
         </kbd>
       </button>
@@ -79,7 +79,7 @@ export function Header({ session, onMenuClick, onSearchClick }: HeaderProps) {
       <div ref={ref} className="relative">
         <button
           onClick={() => setNotifOpen(!notifOpen)}
-          className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          className="relative p-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors"
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
@@ -123,7 +123,7 @@ export function Header({ session, onMenuClick, onSearchClick }: HeaderProps) {
                 className="text-xs text-blue-600 hover:underline"
                 onClick={() => setNotifOpen(false)}
               >
-                Ver todas as notificações
+                Abrir caixa de entrada
               </Link>
             </div>
           </div>
@@ -132,8 +132,8 @@ export function Header({ session, onMenuClick, onSearchClick }: HeaderProps) {
 
       {/* Avatar */}
       <div className="ml-1 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-          <span className="text-white text-xs font-medium">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center ring-2 ring-white shadow-sm">
+          <span className="text-white text-sm font-semibold">
             {session.user.name.charAt(0).toUpperCase()}
           </span>
         </div>

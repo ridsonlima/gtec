@@ -260,9 +260,10 @@ export default function DemandasPage() {
             <Link
               key={d.id}
               href={`/demandas/${d.id}`}
+              onClick={() => { if (d.unread) fetch(`/api/demands/${d.id}/view`, { method: 'POST' }).catch(() => {}) }}
               className={cn(
-                'block bg-white rounded-xl border border-gray-200 border-l-4 px-4 py-3',
-                'hover:shadow-sm transition-shadow',
+                'block rounded-xl border border-l-4 px-4 py-3 hover:shadow-sm transition-shadow',
+                d.unread ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200',
                 d.isOverdue ? 'border-l-red-500' : (priorityBorder[d.priority] ?? 'border-l-gray-200')
               )}
             >
@@ -280,7 +281,15 @@ export default function DemandasPage() {
                         INTERÁREA
                       </span>
                     )}
-                    <p className="text-sm font-medium text-gray-800 truncate">{d.title}</p>
+                    {d.coberturaInfo && (
+                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        🏖️ Cobertura de {d.coberturaInfo.nomeOriginal}
+                      </span>
+                    )}
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {d.unread && <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 align-middle" title="Novidade desde a sua última visita" />}
+                      {d.title}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
@@ -318,6 +327,12 @@ export default function DemandasPage() {
                   <p className="text-xs text-gray-400 mt-0.5">
                     {d.responsible?.name}
                   </p>
+                  {d.substituicaoInfo && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full mt-1" title={`Substituído por ${d.substituicaoInfo.substitutoNome}`}>
+                      <ArrowRightLeft className="w-2.5 h-2.5" />
+                      {d.substituicaoInfo.substitutoNome}
+                    </span>
+                  )}
                 </div>
               </div>
             </Link>

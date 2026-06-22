@@ -21,6 +21,9 @@ import { AttachmentsPanel } from '@/components/shared/AttachmentsPanel'
 import { EvidenciasPanel } from '@/components/shared/EvidenciasPanel'
 import { DemandDeleteButton } from '@/components/demands/DemandDeleteButton'
 import { DeadlineExtensionPanel } from '@/components/demands/DeadlineExtensionPanel'
+import { getAusenciasMap } from '@/lib/ausencias'
+import { SubstituicaoAlert } from '@/components/shared/SubstituicaoBadge'
+import { MarkDemandViewed } from '@/components/demands/MarkDemandViewed'
 
 export default async function DemandDetailPage({ params }: { params: { id: string } }) {
   const session = await auth()
@@ -54,7 +57,14 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
       },
       updates: {
         orderBy: { createdAt: 'desc' },
-        include: { author: { select: { id: true, name: true } } },
+        include: {
+          author: { select: { id: true, name: true } },
+          reactions: { select: { emoji: true, userId: true, user: { select: { name: true } } } },
+          replies: {
+            orderBy: { createdAt: 'asc' },
+            include: { author: { select: { id: true, name: true } } },
+          },
+        },
       },
       attachments: {
         orderBy: { createdAt: 'desc' },
@@ -102,8 +112,13 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
   const isInterArea = Boolean(demand.requestingAreaId)
   const canActOnAcceptancePanel = isInterArea && demand.responsibleId === session.user.id
 
+  // Sinaliza se o responsável está temporariamente ausente (cobertura)
+  const ausenciasMap = await getAusenciasMap([demand.responsibleId])
+  const ausenciaResp = demand.responsibleId ? ausenciasMap.get(demand.responsibleId) : undefined
+
   return (
     <div className="max-w-4xl space-y-5">
+      <MarkDemandViewed demandId={demand.id} />
       {/* Breadcrumb */}
       <Link href={`/areas/${demand.areaId}`} className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600">
         <ChevronLeft className="w-4 h-4" />
@@ -142,6 +157,11 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
           )}
         </div>
       </div>
+
+      {/* Alerta de substituição temporária do responsável */}
+      {ausenciaResp && demand.responsible && (
+        <SubstituicaoAlert nome={demand.responsible.name} info={ausenciaResp} />
+      )}
 
       {/* Metadata grid */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -290,9 +310,19 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
       {/* Evoluções */}
       <DemandEvolutions
         demandId={demand.id}
+        currentUserId={session.user.id}
         initialUpdates={demand.updates.map((u) => ({
-          ...u,
+          id: u.id,
+          content: u.content,
           createdAt: new Date(u.createdAt),
+          author: u.author,
+          reactions: u.reactions.map((r) => ({ emoji: r.emoji, userId: r.userId, userName: r.user?.name ?? '' })),
+          replies: u.replies.map((rp) => ({
+            id: rp.id,
+            content: rp.content,
+            createdAt: new Date(rp.createdAt),
+            author: rp.author,
+          })),
         }))}
         canAdd={canContribute}
       />

@@ -68,15 +68,54 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!session) return apiError('Nao autenticado', 401)
   if (session.user.role !== 'master') return apiError('Apenas master pode excluir contratos', 403)
 
+  const id = params.id
   const contract = await prisma.contract.findUnique({
-    where: { id: params.id },
-    include: { _count: { select: { reports: true, demands: true, attachments: true } } },
+    where: { id },
+    include: {
+      _count: {
+        select: {
+          reports: true, demands: true, medicoes: true, fechamentosMensais: true,
+          medicoesLocacao: true, contractPartners: true, contractors: true,
+          auditoriasVisita: true, alocacoesAtivos: true, funcionarios: true,
+        },
+      },
+    },
   })
   if (!contract) return apiError('Contrato nao encontrado', 404)
-  if (contract._count.reports || contract._count.demands || contract._count.attachments) {
-    return apiError('Este contrato possui registros vinculados. Remova ou desvincule reports, demandas e anexos antes de excluir.', 400)
+
+  const c = contract._count
+  // Bloqueia exclusão se houver dados operacionais/financeiros relevantes
+  const bloqueios: string[] = []
+  if (c.reports)            bloqueios.push(`${c.reports} relatório(s)`)
+  if (c.demands)            bloqueios.push(`${c.demands} demanda(s)`)
+  if (c.medicoes)           bloqueios.push(`${c.medicoes} medição(ões)`)
+  if (c.medicoesLocacao)    bloqueios.push(`${c.medicoesLocacao} medição(ões) de locação`)
+  if (c.fechamentosMensais) bloqueios.push(`${c.fechamentosMensais} fechamento(s) mensal(is)`)
+  if (c.contractPartners)   bloqueios.push(`${c.contractPartners} parceiro(s)`)
+  if (c.contractors)        bloqueios.push(`${c.contractors} empreiteiro(s)`)
+  if (c.auditoriasVisita)   bloqueios.push(`${c.auditoriasVisita} auditoria(s)`)
+  if (bloqueios.length > 0) {
+    return apiError(
+      `Este contrato possui registros vinculados (${bloqueios.join(', ')}). Remova-os antes de excluir.`,
+      400,
+    )
   }
 
-  await prisma.contract.delete({ where: { id: params.id } })
+  try {
+    // Limpa vínculos "leves" e exclui o contrato numa transação
+    await prisma.$transaction([
+      // Desvincula funcionários (mantém o cadastro, só remove a alocação)
+      prisma.funcionario.updateMany({ where: { contratoId: id }, data: { contratoId: null } }),
+      // Remove alocações de ativos e anexos do contrato
+      prisma.alocacaoAtivo.deleteMany({ where: { contratoId: id } }),
+      prisma.attachment.deleteMany({ where: { objectType: 'contract', objectId: id } }),
+      prisma.evidenceRequest.deleteMany({ where: { objectType: 'contract', objectId: id } }),
+      prisma.contract.delete({ where: { id } }),
+    ])
+  } catch (e) {
+    console.error('[DELETE /api/contracts/[id]]', e)
+    return apiError('Não foi possível excluir: ainda há registros vinculados ao contrato.', 400)
+  }
+
   return apiSuccess({ deleted: true })
 }

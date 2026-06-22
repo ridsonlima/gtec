@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { canAccessArea } from '@/lib/permissions'
 import { recalcFechamento } from '@/lib/recalc-fechamento'
+import { audit, ACTIONS } from '@/lib/audit'
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string; fechId: string; txId: string } }) {
   const session = await auth()
@@ -20,6 +21,20 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
   await prisma.transacao.delete({ where: { id: params.txId } })
   await recalcFechamento(params.fechId)
+
+  await audit({
+    userId: session.user.id,
+    action: ACTIONS.TRANSACAO_DELETED,
+    objectType: 'transacao',
+    objectId: params.txId,
+    metadata: {
+      contractId: params.id,
+      fechamentoId: params.fechId,
+      hipotese: tx.hipotese,
+      valor: tx.valor,
+      beneficiario: tx.beneficiario,
+    },
+  })
 
   return apiSuccess({ deleted: true })
 }

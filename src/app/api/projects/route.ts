@@ -14,11 +14,14 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const status = searchParams.get('status')
   const search = searchParams.get('search')
+  const contractId = searchParams.get('contractId')
   const dir    = isDirector(session.user.role)
 
   const projects = await prisma.project.findMany({
     where: {
-      ...(!dir ? { responsibleId: session.user.id } : {}),
+      // ao filtrar por contrato, mostra todos os projetos da obra (não restringe por responsável)
+      ...(!dir && !contractId ? { responsibleId: session.user.id } : {}),
+      ...(contractId ? { contractId } : {}),
       ...(status ? { status } : {}),
       ...(search ? { name: { contains: search } } : {}),
     },
@@ -47,6 +50,7 @@ export async function POST(req: NextRequest) {
     data: {
       name:            d.name,
       objective:       d.objective ?? null,
+      contractId:      d.contractId ?? null,
       responsibleId:   d.responsibleId,
       status:          d.status,
       riskLevel:       d.riskLevel,

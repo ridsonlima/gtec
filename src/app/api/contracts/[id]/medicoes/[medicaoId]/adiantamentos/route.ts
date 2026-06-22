@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { canAccessArea } from '@/lib/permissions'
+import { audit, ACTIONS } from '@/lib/audit'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string; medicaoId: string } }) {
   const session = await auth()
@@ -25,6 +26,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string;
       descricao: body.descricao || null,
       createdById: session.user.id,
     },
+  })
+
+  await audit({
+    userId: session.user.id,
+    action: ACTIONS.ADIANTAMENTO_CREATED,
+    objectType: 'adiantamento',
+    objectId: adiantamento.id,
+    metadata: { contractId: params.id, medicaoId: params.medicaoId, valor: adiantamento.valor },
   })
 
   return apiSuccess(adiantamento, 201)

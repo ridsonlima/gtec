@@ -8,6 +8,7 @@ import { Save, Send, AlertCircle } from 'lucide-react'
 interface ReportFormData {
   areaId: string
   contractId: string
+  projectId: string
   title: string
   period: string
   executiveSummary: string
@@ -51,7 +52,7 @@ const ReportSection = memo(function ReportSection({
 })
 
 const EMPTY: ReportFormData = {
-  areaId: '', contractId: '', title: '', period: '', executiveSummary: '', evolutions: '',
+  areaId: '', contractId: '', projectId: '', title: '', period: '', executiveSummary: '', evolutions: '',
   criticalPoints: '', attentionPoints: '', risks: '', blockers: '', decisionsNeeded: '',
   nextSteps: '', pendingItems: '', agendaSuggestion: '',
 }
@@ -71,9 +72,15 @@ export default function NovoReportPage() {
     queryFn: () => fetch(`/api/contracts?areaId=${form.areaId}`).then((r) => r.json()),
     enabled: Boolean(form.areaId),
   })
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects-by-contract', form.contractId],
+    queryFn: () => fetch(`/api/projects?contractId=${form.contractId}`).then((r) => r.json()),
+    enabled: Boolean(form.contractId),
+  })
 
   const areas = areasData?.data ?? []
   const contracts = contractsData?.data ?? []
+  const projects = projectsData?.data ?? []
   const set = (key: keyof ReportFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [key]: e.target.value }))
   const setText = (key: keyof ReportFormData) => (value: string) => setForm((f) => ({ ...f, [key]: value }))
 
@@ -85,7 +92,7 @@ export default function NovoReportPage() {
       const res = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, contractId: form.contractId || null, action: publish ? 'publish' : 'draft' }),
+        body: JSON.stringify({ ...form, contractId: form.contractId || null, projectId: form.projectId || null, action: publish ? 'publish' : 'draft' }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erro ao salvar')
@@ -107,7 +114,7 @@ export default function NovoReportPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => saveMutation.mutate(false)} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"><Save className="w-4 h-4" />Salvar rascunho</button>
-          <button onClick={() => saveMutation.mutate(true)} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"><Send className="w-4 h-4" />Publicar Report</button>
+          <button onClick={() => saveMutation.mutate(true)} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50"><Send className="w-4 h-4" />Publicar Report</button>
         </div>
       </div>
 
@@ -125,11 +132,20 @@ export default function NovoReportPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Contrato (opcional)</label>
-            <select value={form.contractId} onChange={set('contractId')} disabled={!form.areaId} className="input disabled:bg-gray-50 disabled:text-gray-400">
+            <select value={form.contractId} onChange={(e) => setForm((f) => ({ ...f, contractId: e.target.value, projectId: '' }))} disabled={!form.areaId} className="input disabled:bg-gray-50 disabled:text-gray-400">
               <option value="">Sem contrato específico</option>
               {contracts.map((c: any) => <option key={c.id} value={c.id}>{c.number} - {c.name}</option>)}
             </select>
           </div>
+          {form.contractId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Projeto / frente de serviço (opcional)</label>
+              <select value={form.projectId} onChange={set('projectId')} className="input">
+                <option value="">Sem projeto vinculado</option>
+                {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Título <span className="text-red-500">*</span></label>
@@ -167,7 +183,7 @@ export default function NovoReportPage() {
       <div className="flex justify-end gap-3 pb-8">
         <button onClick={() => router.back()} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
         <button onClick={() => saveMutation.mutate(false)} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"><Save className="w-4 h-4" />Salvar rascunho</button>
-        <button onClick={() => saveMutation.mutate(true)} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">{saveMutation.isPending ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Send className="w-4 h-4" />}Publicar Report</button>
+        <button onClick={() => saveMutation.mutate(true)} disabled={saveMutation.isPending} className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50">{saveMutation.isPending ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Send className="w-4 h-4" />}Publicar Report</button>
       </div>
     </div>
   )

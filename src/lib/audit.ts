@@ -52,4 +52,15 @@ export const ACTIONS = {
   CONTRACT_UPDATED: 'contract.updated',
   AGENDA_CREATED: 'agenda.created',
   AGENDA_UPDATED: 'agenda.updated',
+  // Financeiro — rastreabilidade de movimentação de dinheiro
+  MEDICAO_CREATED: 'medicao.created',
+  MEDICAO_UPDATED: 'medicao.updated',
+  MEDICAO_DELETED: 'medicao.deleted',
+  ADIANTAMENTO_CREATED: 'adiantamento.created',
+  ADIANTAMENTO_DELETED: 'adiantamento.deleted',
+  FECHAMENTO_CREATED: 'fechamento.created',
+  FECHAMENTO_UPDATED: 'fechamento.updated',
+  FECHAMENTO_DELETED: 'fechamento.deleted',
+  TRANSACAO_CREATED: 'transacao.created',
+  TRANSACAO_DELETED: 'transacao.deleted',
 } as const

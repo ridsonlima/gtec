@@ -9,6 +9,12 @@ export const ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
   'image/webp',
+  'image/heic',
+  'image/heif',
+  // Vídeos (evidência de campo)
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
   'application/zip',
   'application/x-zip-compressed',
 ]

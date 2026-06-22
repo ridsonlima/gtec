@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { ArrowRightLeft } from 'lucide-react'
 import { InterareaFilters } from './Filters'
+import { RelatoriosNav } from '@/components/shared/RelatoriosNav'
 
 const ACCEPTANCE_LABELS: Record<string, { label: string; cls: string }> = {
   pending_acceptance: { label: 'Aguardando',  cls: 'bg-amber-100 text-amber-700' },
@@ -83,17 +84,8 @@ export default async function RelatorioInterareaPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <ArrowRightLeft className="w-5 h-5" />
-            Relatório Interárea
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Visão completa das solicitações entre áreas
-          </p>
-        </div>
-      </div>
+      <RelatoriosNav active="interarea" />
+      <p className="text-sm text-gray-500 -mt-3">Visão completa das solicitações entre áreas</p>
 
       {/* KPIs rápidos */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

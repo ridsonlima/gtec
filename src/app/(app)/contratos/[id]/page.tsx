@@ -6,10 +6,16 @@ import Link from 'next/link'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ContractDeleteButton } from '@/components/contracts/ContractDeleteButton'
+import { ContratoProjetos } from '@/components/contracts/ContratoProjetos'
 import { ContractPartnersSection } from '@/components/contracts/ContractPartnersSection'
 import { ContractorsSection } from '@/components/contracts/ContractorsSection'
 import { MedicoesSection } from '@/components/contracts/MedicoesSection'
 import { FechamentoMensalSection } from '@/components/contracts/FechamentoMensalSection'
+import { ResumoExecutivo } from '@/components/contracts/ResumoExecutivo'
+import { AttachmentsPanel } from '@/components/shared/AttachmentsPanel'
+import { AprovacoesContrato } from '@/components/approvo/AprovacoesContrato'
+import { getAusenciasMap } from '@/lib/ausencias'
+import { SubstituicaoAlert } from '@/components/shared/SubstituicaoBadge'
 import { ChevronLeft, Briefcase, Calendar, DollarSign, FileText, AlertTriangle, User, RefreshCw, TrendingUp } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -72,6 +78,10 @@ export default async function ContractDetailPage({ params }: { params: { id: str
         take: 8,
         include: { responsible: { select: { id: true, name: true } } },
       },
+      attachments: {
+        orderBy: { createdAt: 'desc' },
+        include: { uploadedBy: { select: { id: true, name: true } } },
+      },
       _count: { select: { reports: true, demands: true, attachments: true } },
     },
   })
@@ -79,7 +89,16 @@ export default async function ContractDetailPage({ params }: { params: { id: str
   if (!contract) notFound()
   if (!canAccessArea(session, contract.areaId)) notFound()
 
+  // ── Sinais para o Resumo Executivo (página viva) ──────────────────────────
+  const [demandasAbertasTotal, demandasVencidas, evidenciasPendentes] = await Promise.all([
+    prisma.demand.count({ where: { contractId: contract.id, status: { notIn: ['completed', 'cancelled'] } } }),
+    prisma.demand.count({ where: { contractId: contract.id, isOverdue: true, status: { notIn: ['completed', 'cancelled'] } } }),
+    prisma.evidenceRequest.count({ where: { objectType: 'contract', objectId: contract.id, status: 'pending' } }),
+  ])
+
   const canEdit = ['master', 'admin', 'director'].includes(session.user.role)
+  const ausenciasMap = await getAusenciasMap([contract.responsibleId])
+  const ausenciaResp = contract.responsibleId ? ausenciasMap.get(contract.responsibleId) : undefined
   const formatCurrency = (val: number | null) => val == null ? '-' : val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const daysRemaining = contract.endDate ? Math.ceil((new Date(contract.endDate).getTime() - Date.now()) / 86400000) : null
 
@@ -122,6 +141,30 @@ export default async function ContractDetailPage({ params }: { params: { id: str
           </div>
         )}
       </div>
+
+      {/* Alerta de substituição temporária do responsável */}
+      {ausenciaResp && contract.responsible && (
+        <SubstituicaoAlert nome={contract.responsible.name} info={ausenciaResp} />
+      )}
+
+      {/* Resumo Executivo — página viva */}
+      <ResumoExecutivo
+        contractId={contract.id}
+        status={contract.status}
+        demandasAbertas={demandasAbertasTotal}
+        demandasVencidas={demandasVencidas}
+        evidenciasPendentes={evidenciasPendentes}
+        diasParaVencer={daysRemaining}
+        reajusteVencendo={readjustmentDue}
+        diasReajuste={daysToReadjustment}
+        temRiscos={!!contract.riskNotes}
+      />
+
+      {/* Aprovações pendentes do contrato (Approvo) — fila do próprio usuário */}
+      <AprovacoesContrato userId={session.user.id} referencias={[contract.number, contract.name]} />
+
+      {/* Projetos da obra (contrato guarda-chuva → vários projetos) */}
+      <ContratoProjetos contractId={contract.id} defaultResponsavelId={contract.responsibleId ?? undefined} canManage={canEdit} />
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
@@ -200,6 +243,16 @@ export default async function ContractDetailPage({ params }: { params: { id: str
           />
         )
       })()}
+
+      {/* Evidências / Anexos do contrato */}
+      <AttachmentsPanel
+        initialAttachments={contract.attachments.map((a) => ({ ...a, createdAt: new Date(a.createdAt) }))}
+        objectType="contract"
+        objectId={contract.id}
+        canUpload={canEdit}
+        currentUserId={session.user.id}
+        canDeleteAll={['master', 'admin', 'director'].includes(session.user.role)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">

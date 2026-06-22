@@ -104,7 +104,7 @@ export function OSNewUpdateForm({ osId, osStatus }: { osId: string; osStatus: st
         <button
           type="submit"
           disabled={pending || !content.trim()}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50"
         >
           <MessageSquarePlus className="w-4 h-4" />
           {pending ? 'Registrando...' : 'Registrar'}
@@ -289,7 +289,7 @@ export function OSEditForm({ osId, os, osStatus }: {
 
       <div className="flex justify-end gap-2">
         <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancelar</button>
-        <button type="submit" disabled={pending} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <button type="submit" disabled={pending} className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50">
           <Save className="w-4 h-4" />{pending ? 'Salvando...' : 'Salvar'}
         </button>
       </div>

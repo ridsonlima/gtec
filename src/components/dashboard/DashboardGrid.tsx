@@ -285,7 +285,7 @@ export function DashboardGrid({
           <Settings2 className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-sm font-medium text-gray-500">Nenhum card ativo</p>
           <p className="text-xs text-gray-400 mt-1">Clique em "Personalizar" para adicionar cards ao dashboard</p>
-          <button onClick={() => setPanelOpen(true)} className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+          <button onClick={() => setPanelOpen(true)} className="mt-4 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 hover:shadow-md active:scale-[0.98]">
             Personalizar
           </button>
         </div>

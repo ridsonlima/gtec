@@ -46,6 +46,16 @@ const STAGES = [
     filter: (d: any) => d.status === 'in_progress',
   },
   {
+    id: 'pending_approval',
+    label: 'Em Aprovação',
+    description: 'Aguardando validação do gestor da área',
+    color: 'border-amber-300',
+    bg: 'bg-amber-50',
+    badge: 'text-amber-700 bg-amber-100 border-amber-200',
+    dot: 'bg-amber-500',
+    filter: (d: any) => d.status === 'pending_approval',
+  },
+  {
     id: 'blocked',
     label: 'Bloqueada',
     description: 'Execução impedida por bloqueio',
@@ -223,7 +233,8 @@ function DemandRow({ demand: d }: { demand: any }) {
   return (
     <Link
       href={`/demandas/${d.id}`}
-      className={`flex items-center gap-4 px-5 py-3 hover:bg-gray-50/80 transition-colors border-l-4 ${d.isOverdue ? 'border-l-red-500' : (PRIORITY_BORDER[d.priority] ?? 'border-l-gray-200')}`}
+      onClick={() => { if (d.unread) fetch(`/api/demands/${d.id}/view`, { method: 'POST' }).catch(() => {}) }}
+      className={`flex items-center gap-4 px-5 py-3 transition-colors border-l-4 ${d.unread ? 'bg-amber-50 hover:bg-amber-100/70' : 'hover:bg-gray-50/80'} ${d.isOverdue ? 'border-l-red-500' : (PRIORITY_BORDER[d.priority] ?? 'border-l-gray-200')}`}
     >
       <div className="min-w-0 flex-1">
         {/* Title row */}
@@ -237,7 +248,10 @@ function DemandRow({ demand: d }: { demand: any }) {
             </span>
           )}
           <PriorityBadge priority={d.priority} />
-          <span className="text-sm font-medium text-gray-800 truncate">{d.title}</span>
+          <span className="text-sm font-medium text-gray-800 truncate">
+            {d.unread && <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 align-middle" title="Novidade desde a sua última visita" />}
+            {d.title}
+          </span>
         </div>
 
         {/* Meta row */}
@@ -248,6 +262,11 @@ function DemandRow({ demand: d }: { demand: any }) {
           {d.responsible && (
             <span className="flex items-center gap-1">
               <UserCheck className="w-3 h-3" /> {d.responsible.name}
+            </span>
+          )}
+          {d.substituicaoInfo && (
+            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full" title={`Substituído por ${d.substituicaoInfo.substitutoNome}`}>
+              <ArrowRightLeft className="w-3 h-3" /> {d.substituicaoInfo.substitutoNome}
             </span>
           )}
           {d.createdBy && (

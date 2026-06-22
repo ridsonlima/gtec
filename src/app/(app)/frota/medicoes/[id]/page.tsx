@@ -10,6 +10,7 @@ import {
   ClipboardCheck, UserCheck,
 } from 'lucide-react'
 import { MedicaoItemRow } from '@/components/frota/MedicaoItemRow'
+import { AdicionarItemMedicao } from '@/components/frota/AdicionarItemMedicao'
 
 const STATUS_META: Record<string, { label: string; cls: string; icon: any; desc: string }> = {
   rascunho:          { label: 'Rascunho',               cls: 'bg-gray-100 text-gray-600 border-gray-200',      icon: Clock,          desc: 'Preenchendo itens. Envie ao supervisor para conferência.' },
@@ -122,6 +123,7 @@ export default async function FrotaMedicaoDetalhePage({ params }: { params: { id
           medicaoId={medicao.id}
           status={medicao.status as any}
           role={session.user.role}
+          observacoes={medicao.observacoes}
         />
       </div>
 
@@ -179,6 +181,13 @@ export default async function FrotaMedicaoDetalhePage({ params }: { params: { id
                     canEdit={canEditItens}
                   />
                 ))}
+              </div>
+            )}
+
+            {/* Adicionar item (apenas rascunho/rejeitada) */}
+            {canEditItens && (
+              <div className="px-5 py-4 border-t border-gray-100">
+                <AdicionarItemMedicao medicaoId={medicao.id} contratoId={medicao.contratoId} />
               </div>
             )}
 

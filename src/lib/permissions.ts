@@ -124,3 +124,22 @@ export function canCreateAgenda(session: Session): boolean {
   const { role } = session.user
   return role === 'master' || role === 'admin' || role === 'director'
 }
+
+/**
+ * Controle de funcionários (Segurança): gestores e acima OU qualquer usuário
+ * cujo escopo de área seja de Segurança/SESMT/Meio Ambiente.
+ */
+export function isSegurancaTeam(session: Session): boolean {
+  return session.user.areaScopes.some((s) =>
+    /segur|sesmt|ambiente|seg\.?\s*do\s*trab/i.test(s.areaName)
+  )
+}
+
+export function canManageFuncionarios(session: Session): boolean {
+  return isManagerOrAbove(session.user.role) || isSegurancaTeam(session)
+}
+
+/** Gerenciar dados do dashboard de Segurança (mesma regra dos funcionários). */
+export function canManageSeguranca(session: Session): boolean {
+  return isManagerOrAbove(session.user.role) || isSegurancaTeam(session)
+}

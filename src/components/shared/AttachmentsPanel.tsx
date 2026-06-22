@@ -10,6 +10,11 @@ const FILE_META: Record<string, { label: string; cls: string }> = {
   'image/jpeg':                                                                             { label: 'IMG', cls: 'bg-purple-100 text-purple-700' },
   'image/png':                                                                              { label: 'IMG', cls: 'bg-purple-100 text-purple-700' },
   'image/webp':                                                                             { label: 'IMG', cls: 'bg-purple-100 text-purple-700' },
+  'image/heic':                                                                             { label: 'IMG', cls: 'bg-purple-100 text-purple-700' },
+  'image/heif':                                                                             { label: 'IMG', cls: 'bg-purple-100 text-purple-700' },
+  'video/mp4':                                                                              { label: 'VÍDEO', cls: 'bg-pink-100 text-pink-700' },
+  'video/quicktime':                                                                        { label: 'VÍDEO', cls: 'bg-pink-100 text-pink-700' },
+  'video/webm':                                                                             { label: 'VÍDEO', cls: 'bg-pink-100 text-pink-700' },
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':                     { label: 'XLS', cls: 'bg-green-100 text-green-700' },
   'application/vnd.ms-excel':                                                               { label: 'XLS', cls: 'bg-green-100 text-green-700' },
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document':               { label: 'DOC', cls: 'bg-blue-100 text-blue-700' },
@@ -24,11 +29,15 @@ const ALLOWED_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'image/jpeg', 'image/png', 'image/webp',
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+  'video/mp4', 'video/quicktime', 'video/webm',
   'application/zip', 'application/x-zip-compressed',
 ]
 const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
-const ACCEPTED = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.zip'
+const ACCEPTED = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.webm,.zip'
+
+const isImage = (mime: string) => mime.startsWith('image/')
+const isVideo = (mime: string) => mime.startsWith('video/')
 
 type Attachment = {
   id: string
@@ -232,6 +241,36 @@ export function AttachmentsPanel({
         </div>
       ))}
 
+      {/* Galeria de mídia (imagens e vídeos) */}
+      {attachments.some((a) => isImage(a.mimeType) || isVideo(a.mimeType)) && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
+          {attachments.filter((a) => isImage(a.mimeType) || isVideo(a.mimeType)).map((att) => (
+            <a
+              key={att.id}
+              href={`/api/attachments/${att.id}/url`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={att.originalName}
+              className="relative block aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50 group"
+            >
+              {isImage(att.mimeType) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`/api/attachments/${att.id}/url`} alt={att.originalName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
+              ) : (
+                <video src={`/api/attachments/${att.id}/url`} className="w-full h-full object-cover" muted preload="metadata" />
+              )}
+              {isVideo(att.mimeType) && (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <span className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center">
+                    <span className="ml-0.5 border-l-[8px] border-l-gray-800 border-y-[5px] border-y-transparent" />
+                  </span>
+                </span>
+              )}
+            </a>
+          ))}
+        </div>
+      )}
+
       {/* Lista de anexos */}
       {attachments.length === 0 && uploading.length === 0 && !canUpload && (
         <p className="text-sm text-gray-400 text-center py-4">Nenhum anexo</p>
@@ -287,7 +326,7 @@ export function AttachmentsPanel({
 
       {canUpload && (
         <p className="text-xs text-gray-400 mt-3">
-          PDF, DOC, XLS, JPG, PNG, ZIP · Máx. 50 MB por arquivo
+          PDF, DOC, XLS, imagens, vídeos (MP4/MOV), ZIP · Máx. 50 MB por arquivo
         </p>
       )}
     </div>

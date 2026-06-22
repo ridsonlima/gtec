@@ -22,21 +22,25 @@ export async function POST(req: NextRequest) {
   if (!session) return apiError('Não autenticado', 401)
 
   const body = await req.json()
-  const { titulo, descricao, prioridade = 'media', categoria, prazo } = body
+  const { titulo, descricao, prioridade = 'media', categoria, prazo, recorrente = false, recorrencia } = body
 
   if (!titulo?.trim()) return apiError('Título obrigatório', 400)
 
-  const PRIORIDADES = ['baixa', 'media', 'alta', 'urgente']
+  const PRIORIDADES   = ['baixa', 'media', 'alta', 'urgente']
+  const RECORRENCIAS  = ['diaria', 'semanal', 'quinzenal', 'mensal']
   if (!PRIORIDADES.includes(prioridade)) return apiError('Prioridade inválida', 400)
+  if (recorrencia && !RECORRENCIAS.includes(recorrencia)) return apiError('Recorrência inválida', 400)
 
   const tarefa = await prisma.tarefaPessoal.create({
     data: {
-      userId:    session.user.id,
-      titulo:    titulo.trim(),
-      descricao: descricao?.trim() || null,
+      userId:     session.user.id,
+      titulo:     titulo.trim(),
+      descricao:  descricao?.trim() || null,
       prioridade,
-      categoria: categoria?.trim() || null,
-      prazo:     prazo ? new Date(prazo) : null,
+      categoria:  categoria?.trim() || null,
+      prazo:      prazo ? new Date(prazo) : null,
+      recorrente: !!recorrente,
+      recorrencia: recorrente && recorrencia ? recorrencia : null,
     },
   })
 

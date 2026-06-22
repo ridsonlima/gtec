@@ -39,17 +39,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null
         }
 
-        // Atualiza lastLoginAt
+        // Atualiza lastLoginAt e incrementa loginCount
         await prisma.user.update({
           where: { id: user.id },
-          data: { lastLoginAt: new Date() },
+          data: { lastLoginAt: new Date(), loginCount: { increment: 1 } },
         })
 
         return {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: (user.email === 'ridsonlima@gmail.com' ? 'master' : user.role) as Role,
+          role: user.role as Role,
           areaScopes: user.areaScopes.map((s) => ({
             areaId: s.areaId,
             areaName: s.area.name,

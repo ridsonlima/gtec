@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { canAccessArea } from '@/lib/permissions'
+import { audit, ACTIONS } from '@/lib/audit'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -58,6 +59,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       createdById: session.user.id,
     },
     include: { adiantamentos: true, createdBy: { select: { id: true, name: true } } },
+  })
+
+  await audit({
+    userId: session.user.id,
+    action: ACTIONS.MEDICAO_CREATED,
+    objectType: 'medicao',
+    objectId: medicao.id,
+    metadata: {
+      contractId: params.id,
+      competencia: `${mes}/${ano}`,
+      valorProduzido: medicao.valorProduzido,
+      valorAprovado: medicao.valorAprovado,
+      valorFaturado: medicao.valorFaturado,
+    },
   })
 
   return apiSuccess(medicao, 201)

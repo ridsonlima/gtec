@@ -24,6 +24,7 @@ export default async function ReportDetailPage({
     include: {
       area: true,
       contract: { select: { id: true, number: true, name: true } },
+      project: { select: { id: true, name: true } },
       author: { select: { id: true, name: true, role: true } },
       attachments: {
         orderBy: { createdAt: 'desc' },
@@ -111,6 +112,7 @@ export default async function ReportDetailPage({
                   <Link href={`/contratos/${report.contract.id}`} className="hover:text-blue-600">
                     {report.contract.number}
                   </Link>
+                  {report.project && <span className="text-gray-400"> · {report.project.name}</span>}
                 </span>
               )}
             </p>

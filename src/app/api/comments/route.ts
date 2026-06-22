@@ -116,6 +116,11 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Toca o updatedAt da demanda → o comentário conta como "novidade" no Kanban
+    if (data.objectType === 'demand') {
+      prisma.demand.update({ where: { id: data.objectId }, data: { updatedAt: new Date() } }).catch(() => {})
+    }
+
     // Se for solicitação de evidência, cria o registro formal
     if (
       data.type === 'evidence_request' &&
