@@ -1645,6 +1645,7 @@ model RotinaArea {
   responsavelId String   @map("responsavel_id") // usuário dono da rotina
   title         String
   descricao     String?
+  instrucoes    String?  // roteiro: o que se espera da entrega (definido pelo líder)
   frequencia    String   @default("semanal") // diaria | semanal | mensal
   ativo         Boolean  @default(true)
   createdById   String   @map("created_by_id")
@@ -1663,6 +1664,7 @@ model RotinaConclusao {
   id             String   @id @default(uuid())
   rotinaId       String   @map("rotina_id")
   periodo        String // chave do ciclo (ex: 2026-06-22 | 2026-W26 | 2026-06)
+  status         String   @default("concluida") // concluida | parcial | pendencias | nao_realizada
   texto          String?
   concluidoEm    DateTime @default(now()) @map("concluido_em")
   concluidoPorId String   @map("concluido_por_id")

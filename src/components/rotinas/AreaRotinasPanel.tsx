@@ -11,12 +11,14 @@ type Rotina = {
   id: string
   title: string
   descricao: string | null
+  instrucoes: string | null
   frequencia: 'diaria' | 'semanal' | 'mensal'
   cicloLabel: string
   responsavel: { id: string; name: string }
   ehMinha: boolean
   entrega: null | {
     id: string
+    status: string
     texto: string | null
     concluidoEm: string
     concluidoPor: string
@@ -26,6 +28,13 @@ type Rotina = {
 
 const FREQ_LABEL: Record<string, string> = { diaria: 'Diárias', semanal: 'Semanais', mensal: 'Mensais' }
 const FREQ_ORDER = ['diaria', 'semanal', 'mensal']
+
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  concluida: { label: 'Concluída', cls: 'bg-green-100 text-green-700 border-green-200' },
+  parcial: { label: 'Parcial', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  pendencias: { label: 'Com pendências', cls: 'bg-orange-100 text-orange-700 border-orange-200' },
+  nao_realizada: { label: 'Não realizada', cls: 'bg-red-100 text-red-700 border-red-200' },
+}
 
 export function AreaRotinasPanel({ areaId, canManage, currentUserId, members }: {
   areaId: string; canManage: boolean; currentUserId: string; members: Member[]
@@ -105,6 +114,7 @@ function RotinaCard({ r, escopo, canManage, currentUserId, onChange }: {
 }) {
   const [open, setOpen] = useState(false)
   const [texto, setTexto] = useState('')
+  const [status, setStatus] = useState('concluida')
   const [saving, setSaving] = useState(false)
   const podeEntregar = r.ehMinha || canManage
   const entregue = !!r.entrega
@@ -112,9 +122,9 @@ function RotinaCard({ r, escopo, canManage, currentUserId, onChange }: {
   async function concluir() {
     setSaving(true)
     await fetch(`/api/rotinas/${r.id}/concluir`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto, status }),
     }).catch(() => {})
-    setSaving(false); setOpen(false); setTexto(''); onChange()
+    setSaving(false); setOpen(false); setTexto(''); setStatus('concluida'); onChange()
   }
   async function desfazer() {
     if (!confirm('Desfazer a entrega deste ciclo?')) return
@@ -136,12 +146,22 @@ function RotinaCard({ r, escopo, canManage, currentUserId, onChange }: {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-gray-800">{r.title}</p>
           {r.descricao && <p className="text-xs text-gray-400 mt-0.5">{r.descricao}</p>}
-          <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+          <div className="flex items-center gap-2 mt-1 text-xs text-gray-400 flex-wrap">
             {escopo === 'todas' && <span className="inline-flex items-center gap-1"><User className="w-3 h-3" /> {r.responsavel.name}</span>}
+            {entregue && r.entrega!.status && (
+              <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full border ${STATUS_META[r.entrega!.status]?.cls ?? ''}`}>
+                {STATUS_META[r.entrega!.status]?.label ?? r.entrega!.status}
+              </span>
+            )}
             {entregue
-              ? <span className="text-green-600">Entregue {r.cicloLabel} · {r.entrega!.concluidoPor} · {timeAgo(r.entrega!.concluidoEm)}</span>
+              ? <span className="text-gray-500">Entregue {r.cicloLabel} · {r.entrega!.concluidoPor} · {timeAgo(r.entrega!.concluidoEm)}</span>
               : <span className="text-amber-600">Pendente {r.cicloLabel}</span>}
           </div>
+          {r.instrucoes && (
+            <p className="text-xs text-gray-500 mt-1.5 bg-gray-50 border border-gray-100 rounded-md px-2 py-1.5">
+              <span className="font-medium text-gray-600">O que entregar:</span> {r.instrucoes}
+            </p>
+          )}
 
           {entregue && r.entrega!.texto && (
             <p className="text-sm text-gray-700 mt-2 whitespace-pre-line border-l-2 border-green-200 pl-2">{r.entrega!.texto}</p>
@@ -167,7 +187,16 @@ function RotinaCard({ r, escopo, canManage, currentUserId, onChange }: {
 
           {!entregue && open && (
             <div className="mt-2 space-y-2">
-              <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} placeholder="Observação da entrega (opcional)" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-y" autoFocus />
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                  <option value="concluida">Concluída</option>
+                  <option value="parcial">Parcial</option>
+                  <option value="pendencias">Com pendências</option>
+                  <option value="nao_realizada">Não realizada</option>
+                </select>
+              </div>
+              <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} placeholder="Resumo do que foi feito (opcional)" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-y" />
               <div className="flex items-center gap-2">
                 <button onClick={concluir} disabled={saving} className="px-4 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50">
                   {saving ? 'Salvando…' : 'Marcar entregue'}
@@ -197,6 +226,7 @@ function NovaRotinaForm({ areaId, members, onClose, onSaved }: {
 }) {
   const [title, setTitle] = useState('')
   const [descricao, setDescricao] = useState('')
+  const [instrucoes, setInstrucoes] = useState('')
   const [frequencia, setFrequencia] = useState('semanal')
   const [responsavelId, setResponsavelId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -210,7 +240,7 @@ function NovaRotinaForm({ areaId, members, onClose, onSaved }: {
     try {
       const res = await fetch('/api/rotinas', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areaId, title, descricao, frequencia, responsavelId }),
+        body: JSON.stringify({ areaId, title, descricao, instrucoes, frequencia, responsavelId }),
       })
       const d = await res.json()
       if (!res.ok) { setError(d?.error ?? 'Erro ao salvar'); return }
@@ -226,6 +256,10 @@ function NovaRotinaForm({ areaId, members, onClose, onSaved }: {
       </div>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Relatório de entrega da Segurança do Trabalho" className={INPUT} autoFocus />
       <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={2} placeholder="Descrição (opcional)" className={`${INPUT} resize-y`} />
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">O que precisa ser entregue (roteiro)</label>
+        <textarea value={instrucoes} onChange={(e) => setInstrucoes(e.target.value)} rows={2} placeholder="Ex: Anexar o PDF assinado + informar nº de inspeções realizadas" className={`${INPUT} resize-y`} />
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Responsável</label>

@@ -19,17 +19,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const podeEntregar = rotina.responsavelId === session.user.id || canManageRotina(session.user.role)
   if (!podeEntregar) return apiError('Apenas o responsável pode entregar', 403)
 
+  const STATUS = ['concluida', 'parcial', 'pendencias', 'nao_realizada']
   let texto: string | null = null
+  let status = 'concluida'
   try {
     const body = await req.json()
     if (typeof body?.texto === 'string') texto = body.texto.trim() || null
-  } catch { /* sem corpo = só marca feito */ }
+    if (typeof body?.status === 'string' && STATUS.includes(body.status)) status = body.status
+  } catch { /* sem corpo = marca como concluída */ }
 
   const periodo = periodKey(rotina.frequencia as Frequencia)
   const c = await prisma.rotinaConclusao.upsert({
     where: { rotinaId_periodo: { rotinaId: rotina.id, periodo } },
-    create: { rotinaId: rotina.id, periodo, texto, concluidoPorId: session.user.id },
-    update: { texto, concluidoEm: new Date(), concluidoPorId: session.user.id },
+    create: { rotinaId: rotina.id, periodo, status, texto, concluidoPorId: session.user.id },
+    update: { status, texto, concluidoEm: new Date(), concluidoPorId: session.user.id },
   })
   return apiSuccess(c)
 }

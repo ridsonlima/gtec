@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
       id: r.id,
       title: r.title,
       descricao: r.descricao,
+      instrucoes: r.instrucoes,
       frequencia: r.frequencia,
       cicloLabel: periodLabel(r.frequencia as Frequencia),
       responsavel: { id: r.responsavelId, name: userMap.get(r.responsavelId) ?? '—' },
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
       entrega: c
         ? {
             id: c.id,
+            status: c.status,
             texto: c.texto,
             concluidoEm: c.concluidoEm,
             concluidoPor: userMap.get(c.concluidoPorId) ?? '—',
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
   if (!canManageRotina(session.user.role)) return apiError('Sem permissão', 403)
 
   const body = await req.json()
-  const { areaId, title, descricao, frequencia = 'semanal', responsavelId } = body
+  const { areaId, title, descricao, instrucoes, frequencia = 'semanal', responsavelId } = body
   if (!areaId) return apiError('areaId obrigatório', 400)
   if (!canAccessArea(session, areaId)) return apiError('Sem acesso', 403)
   if (!title?.trim()) return apiError('Título obrigatório', 400)
@@ -99,6 +101,7 @@ export async function POST(req: NextRequest) {
       responsavelId,
       title: title.trim(),
       descricao: descricao?.trim() || null,
+      instrucoes: instrucoes?.trim() || null,
       frequencia,
       createdById: session.user.id,
     },
