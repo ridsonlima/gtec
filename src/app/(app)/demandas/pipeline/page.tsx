@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { List, LayoutGrid, ArrowRightLeft, AlertTriangle, Clock, ChevronRight, User, UserCheck } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
+import { DemandSignalBadges } from '@/components/demands/DemandSignalBadges'
+import { markDemandSeenInCache } from '@/lib/demandCache'
 
 const PRIORITY_BORDER: Record<string, string> = {
   critical: 'border-l-red-500',
@@ -72,6 +74,7 @@ type ViewMode = 'all' | 'mine'
 export default function PipelinePage() {
   const [viewMode, setViewMode] = useState<ViewMode>('all')
   const [areaId, setAreaId] = useState('')
+  const [signal, setSignal] = useState<'all' | 'unread' | 'stale' | 'overdue'>('all')
 
   const params = new URLSearchParams({ openOnly: 'true', limit: '200', ...(areaId && { areaId }) })
 
@@ -117,12 +120,28 @@ export default function PipelinePage() {
 
   const overdue = demands.filter((d) => d.isOverdue)
 
+  const counts = {
+    unread: demands.filter((d) => d.unread).length,
+    stale: demands.filter((d) => d.isStale).length,
+    overdue: demands.filter((d) => d.overdueLevel && d.overdueLevel !== 'none').length,
+  }
+
+  const filtered = demands.filter((d) =>
+    signal === 'all'
+      ? true
+      : signal === 'unread'
+        ? d.unread
+        : signal === 'stale'
+          ? d.isStale
+          : d.overdueLevel && d.overdueLevel !== 'none'
+  )
+
   const stageData = STAGES.map((stage) => ({
     ...stage,
-    demands: demands.filter(stage.filter),
+    demands: filtered.filter(stage.filter),
   }))
 
-  const total = demands.length
+  const total = filtered.length
 
   return (
     <div className="space-y-5">
@@ -158,6 +177,14 @@ export default function PipelinePage() {
             ))}
           </select>
         )}
+
+        {/* Filtros de sinalização */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <SignalChip active={signal === 'all'} onClick={() => setSignal('all')} label="Todas" tone="gray" />
+          <SignalChip active={signal === 'unread'} onClick={() => setSignal('unread')} label="Não vistas" count={counts.unread} tone="blue" />
+          <SignalChip active={signal === 'stale'} onClick={() => setSignal('stale')} label="Estagnadas" count={counts.stale} tone="amber" />
+          <SignalChip active={signal === 'overdue'} onClick={() => setSignal('overdue')} label="Atrasadas" count={counts.overdue} tone="red" />
+        </div>
 
         {/* Resumo por estágio */}
         <div className="flex items-center gap-2 flex-wrap ml-auto">
@@ -222,6 +249,7 @@ export default function PipelinePage() {
 }
 
 function DemandRow({ demand: d }: { demand: any }) {
+  const qc = useQueryClient()
   function daysLeft() {
     if (!d.dueDate) return null
     const diff = Math.ceil((new Date(d.dueDate).getTime() - Date.now()) / 86400000)
@@ -233,25 +261,25 @@ function DemandRow({ demand: d }: { demand: any }) {
   return (
     <Link
       href={`/demandas/${d.id}`}
-      onClick={() => { if (d.unread) fetch(`/api/demands/${d.id}/view`, { method: 'POST' }).catch(() => {}) }}
-      className={`flex items-center gap-4 px-5 py-3 transition-colors border-l-4 ${d.unread ? 'bg-amber-50 hover:bg-amber-100/70' : 'hover:bg-gray-50/80'} ${d.isOverdue ? 'border-l-red-500' : (PRIORITY_BORDER[d.priority] ?? 'border-l-gray-200')}`}
+      onClick={() => {
+        if (d.unread) {
+          markDemandSeenInCache(qc, d.id)
+          fetch(`/api/demands/${d.id}/view`, { method: 'POST' }).catch(() => {})
+        }
+      }}
+      className={`flex items-center gap-4 px-5 py-3 transition-colors border-l-4 ${d.unread ? 'bg-blue-50/60 hover:bg-blue-100/50' : 'hover:bg-gray-50/80'} ${d.isOverdue ? 'border-l-red-500' : (PRIORITY_BORDER[d.priority] ?? 'border-l-gray-200')}`}
     >
       <div className="min-w-0 flex-1">
         {/* Title row */}
         <div className="flex items-center gap-2 flex-wrap">
-          {d.isOverdue && (
-            <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full border border-red-200">VENCIDA</span>
-          )}
           {d.requestingAreaId && (
             <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-200">
               <ArrowRightLeft className="w-3 h-3" /> INTERÁREA
             </span>
           )}
           <PriorityBadge priority={d.priority} />
-          <span className="text-sm font-medium text-gray-800 truncate">
-            {d.unread && <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 align-middle" title="Novidade desde a sua última visita" />}
-            {d.title}
-          </span>
+          <DemandSignalBadges d={d} />
+          <span className="text-sm font-medium text-gray-800 truncate">{d.title}</span>
         </div>
 
         {/* Meta row */}
@@ -299,5 +327,30 @@ function DemandRow({ demand: d }: { demand: any }) {
 
       <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
     </Link>
+  )
+}
+
+const CHIP_TONES: Record<string, { active: string; idle: string }> = {
+  gray: { active: 'bg-gray-800 text-white border-gray-800', idle: 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' },
+  blue: { active: 'bg-blue-600 text-white border-blue-600', idle: 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50' },
+  amber: { active: 'bg-amber-500 text-white border-amber-500', idle: 'bg-white text-amber-800 border-amber-200 hover:bg-amber-50' },
+  red: { active: 'bg-red-600 text-white border-red-600', idle: 'bg-white text-red-700 border-red-200 hover:bg-red-50' },
+}
+
+function SignalChip({ active, onClick, label, count, tone }: {
+  active: boolean; onClick: () => void; label: string; count?: number; tone: 'gray' | 'blue' | 'amber' | 'red'
+}) {
+  const t = CHIP_TONES[tone]
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${active ? t.active : t.idle}`}
+    >
+      {label}
+      {typeof count === 'number' && (
+        <span className={`font-bold ${active ? 'opacity-90' : 'opacity-70'}`}>{count}</span>
+      )}
+    </button>
   )
 }

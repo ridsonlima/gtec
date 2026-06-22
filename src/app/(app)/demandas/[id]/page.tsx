@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { canAccessDemand, canUpdateDemand, canContributeToDemand } from '@/lib/permissions'
 import Link from 'next/link'
-import { formatDate } from '@/lib/utils'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
+import { WhatChangedPanel, type ChangeItem } from '@/components/demands/WhatChangedPanel'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { DemandActions } from '@/components/demands/DemandActions'
 import { CollaboratorsPanel } from '@/components/demands/CollaboratorsPanel'
@@ -116,6 +117,47 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
   const ausenciasMap = await getAusenciasMap([demand.responsibleId])
   const ausenciaResp = demand.responsibleId ? ausenciasMap.get(demand.responsibleId) : undefined
 
+  // "O que mudou desde sua última visita" — lê o viewedAt ANTES do MarkDemandViewed
+  // (client) sobrescrever, então reflete a visita anterior deste usuário.
+  const lastView = await prisma.demandView.findUnique({
+    where: { userId_demandId: { userId: session.user.id, demandId: demand.id } },
+    select: { viewedAt: true },
+  })
+  const previousViewedAt = lastView?.viewedAt ?? null
+  const truncate = (s: string, n: number) => (s.length > n ? s.slice(0, n).trimEnd() + '…' : s)
+  const changeItems: ChangeItem[] = []
+  if (previousViewedAt) {
+    for (const u of demand.updates) {
+      if (new Date(u.createdAt) <= previousViewedAt) continue
+      if (u.statusBefore && u.statusAfter) {
+        changeItems.push({
+          kind: 'status',
+          text: `Status: ${STATUS_LABELS[u.statusBefore] ?? u.statusBefore} → ${STATUS_LABELS[u.statusAfter] ?? u.statusAfter}`,
+          author: u.author?.name,
+          at: u.createdAt,
+        })
+      } else {
+        changeItems.push({ kind: 'update', text: `Nova evolução: ${truncate(u.content, 80)}`, author: u.author?.name, at: u.createdAt })
+      }
+    }
+    for (const c of demand.comments) {
+      if (new Date(c.createdAt) > previousViewedAt) {
+        changeItems.push({ kind: 'comment', text: `Novo comentário: ${truncate(c.content, 80)}`, author: c.author?.name, at: c.createdAt })
+      }
+      for (const r of c.replies) {
+        if (new Date(r.createdAt) > previousViewedAt) {
+          changeItems.push({ kind: 'comment', text: `Resposta: ${truncate(r.content, 80)}`, author: r.author?.name, at: r.createdAt })
+        }
+      }
+    }
+    for (const a of demand.attachments) {
+      if (new Date(a.createdAt) > previousViewedAt) {
+        changeItems.push({ kind: 'attachment', text: `Anexo adicionado: ${a.originalName}`, author: a.uploadedBy?.name, at: a.createdAt })
+      }
+    }
+    changeItems.sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
+  }
+
   return (
     <div className="max-w-4xl space-y-5">
       <MarkDemandViewed demandId={demand.id} />
@@ -124,6 +166,8 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
         <ChevronLeft className="w-4 h-4" />
         Demandas
       </Link>
+
+      <WhatChangedPanel items={changeItems} />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">

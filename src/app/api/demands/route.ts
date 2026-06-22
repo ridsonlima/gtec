@@ -7,6 +7,7 @@ import { canCreateDemand, getUserAreaIds, canAccessArea } from '@/lib/permission
 import { audit, ACTIONS } from '@/lib/audit'
 import { notifyDemandAssigned, notifyCollaboratorAdded, notifyInterareaPendingAcceptance } from '@/lib/notifications'
 import { getAusenciasMap } from '@/lib/ausencias'
+import { computeDemandSignals } from '@/lib/demandSignals'
 import { ZodError } from 'zod'
 
 // GET /api/demands
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
         responsible: { select: { id: true, name: true } },
         createdBy: { select: { id: true, name: true } },
         _count: { select: { comments: true, attachments: true, collaborators: true } },
+        updates: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
       },
     }),
     prisma.demand.count({ where }),
@@ -135,13 +137,24 @@ export async function GET(req: NextRequest) {
   const demandsWithCoverage = demands.map((d) => {
     const aus = d.responsible?.id ? ausenciasMap.get(d.responsible.id) : undefined
     const viewedAt = viewMap.get(d.id)
+    const lastActivityAt = d.updates[0]?.createdAt ?? d.createdAt
+    const signals = computeDemandSignals({
+      status: d.status,
+      dueDate: d.dueDate,
+      updatedAt: d.updatedAt,
+      createdAt: d.createdAt,
+      lastActivityAt,
+      viewedAt,
+    })
+    const { updates, ...rest } = d
     return {
-      ...d,
+      ...rest,
       coberturaInfo: coveredUserIds.includes(d.responsible?.id ?? '')
         ? { type: 'cobertura', nomeOriginal: d.responsible?.name ?? '' }
         : null,
       substituicaoInfo: aus ? { substitutoNome: aus.substitutoNome } : null,
-      unread: !viewedAt || new Date(d.updatedAt) > new Date(viewedAt),
+      lastActivityAt,
+      ...signals,
     }
   })
 

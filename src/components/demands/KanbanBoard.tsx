@@ -8,6 +8,7 @@ import {
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
+import { DemandSignalBadges } from '@/components/demands/DemandSignalBadges'
 import { formatDate } from '@/lib/utils'
 import { ChevronDown, X, SlidersHorizontal, ArrowRightLeft, GripVertical } from 'lucide-react'
 
@@ -32,6 +33,10 @@ type Demand = {
   responsible: { name: string }
   substituicaoInfo?: { substitutoNome: string } | null
   unread?: boolean
+  isStale?: boolean
+  staleDays?: number
+  overdueLevel?: 'none' | 'late' | 'very_late'
+  overdueDays?: number
 }
 
 const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
@@ -303,24 +308,19 @@ function KanbanCard({
       className={`group rounded-xl border p-3 shadow-sm transition-all cursor-grab active:cursor-grabbing ${
         isMoving ? 'opacity-50' : ''
       } ${isDragging ? 'opacity-30' : ''} ${
-        unread ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200'
+        unread ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
       } ${demand.isOverdue ? 'border-l-4 border-l-red-500' : ''}`}
     >
       <div className="flex items-start gap-1.5">
         <GripVertical className="w-3.5 h-3.5 text-gray-300 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         <p className="flex-1 text-sm font-medium text-gray-800 line-clamp-2 mb-2 hover:text-blue-600 leading-snug">
-          {unread && <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 align-middle" title="Novidade desde a sua última visita" />}
           {demand.title}
         </p>
       </div>
 
       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
         <PriorityBadge priority={demand.priority} />
-        {demand.isOverdue && (
-          <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full border border-red-200">
-            VENCIDA
-          </span>
-        )}
+        <DemandSignalBadges d={{ ...demand, unread }} />
       </div>
 
       <div className="flex items-end justify-between gap-2">

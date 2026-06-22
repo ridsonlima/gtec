@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserAreaIds } from '@/lib/permissions'
 import { KanbanBoard } from '@/components/demands/KanbanBoard'
 import { getAusenciasMap } from '@/lib/ausencias'
+import { computeDemandSignals } from '@/lib/demandSignals'
 import { LayoutGrid, List } from 'lucide-react'
 import Link from 'next/link'
 
@@ -33,6 +34,7 @@ export default async function KanbanPage() {
     include: {
       area:        { select: { name: true } },
       responsible: { select: { id: true, name: true } },
+      updates:     { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
     },
   })
 
@@ -47,11 +49,21 @@ export default async function KanbanPage() {
   const demandsEnriched = demands.map((d) => {
     const aus = d.responsibleId ? ausenciasMap.get(d.responsibleId) : undefined
     const viewedAt = viewMap.get(d.id)
-    const unread = !viewedAt || new Date(d.updatedAt) > new Date(viewedAt)
+    const lastActivityAt = d.updates[0]?.createdAt ?? d.createdAt
+    const signals = computeDemandSignals({
+      status: d.status,
+      dueDate: d.dueDate,
+      updatedAt: d.updatedAt,
+      createdAt: d.createdAt,
+      lastActivityAt,
+      viewedAt,
+    })
+    const { updates, ...rest } = d
     return {
-      ...d,
+      ...rest,
       substituicaoInfo: aus ? { substitutoNome: aus.substitutoNome } : null,
-      unread,
+      lastActivityAt,
+      ...signals,
     }
   })
 

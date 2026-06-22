@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { Plus, Filter, ArrowRightLeft, LayoutGrid, Download, GitBranch } from 'lucide-react'
 import { formatDate, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
+import { DemandSignalBadges } from '@/components/demands/DemandSignalBadges'
+import { markDemandSeenInCache } from '@/lib/demandCache'
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -53,6 +55,7 @@ export default function DemandasPage() {
   const [interarea, setInterarea] = useState(false)
   const [search, setSearch]     = useState('')
   const [page, setPage]         = useState(1)
+  const qc = useQueryClient()
 
   const params = new URLSearchParams({
     ...(status   && { status }),
@@ -260,21 +263,21 @@ export default function DemandasPage() {
             <Link
               key={d.id}
               href={`/demandas/${d.id}`}
-              onClick={() => { if (d.unread) fetch(`/api/demands/${d.id}/view`, { method: 'POST' }).catch(() => {}) }}
+              onClick={() => {
+                if (d.unread) {
+                  markDemandSeenInCache(qc, d.id)
+                  fetch(`/api/demands/${d.id}/view`, { method: 'POST' }).catch(() => {})
+                }
+              }}
               className={cn(
                 'block rounded-xl border border-l-4 px-4 py-3 hover:shadow-sm transition-shadow',
-                d.unread ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200',
+                d.unread ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200',
                 d.isOverdue ? 'border-l-red-500' : (priorityBorder[d.priority] ?? 'border-l-gray-200')
               )}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {d.isOverdue && (
-                      <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
-                        VENCIDA
-                      </span>
-                    )}
                     {d.requestingAreaId && (
                       <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-200">
                         <ArrowRightLeft className="w-3 h-3" />
@@ -286,8 +289,8 @@ export default function DemandasPage() {
                         🏖️ Cobertura de {d.coberturaInfo.nomeOriginal}
                       </span>
                     )}
+                    <DemandSignalBadges d={d} />
                     <p className="text-sm font-medium text-gray-800 truncate">
-                      {d.unread && <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 align-middle" title="Novidade desde a sua última visita" />}
                       {d.title}
                     </p>
                   </div>
