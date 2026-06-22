@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { createNotification } from '@/lib/notifications'
 import { computeDemandSignals } from '@/lib/demandSignals'
+import { isCronAuthorized } from '@/lib/cron'
 
 /**
  * POST /api/demands/escalation
@@ -15,9 +16,16 @@ import { computeDemandSignals } from '@/lib/demandSignals'
  * Cadência semanal evita spam diário sem precisar de campo de "última cobrança".
  * Autenticado via header x-cron-secret.
  */
+export async function GET(req: NextRequest) {
+  return runEscalation(req)
+}
+
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+  return runEscalation(req)
+}
+
+async function runEscalation(req: NextRequest) {
+  if (!isCronAuthorized(req)) {
     return apiError('Não autorizado', 401)
   }
 

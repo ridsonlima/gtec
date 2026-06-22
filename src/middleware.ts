@@ -11,6 +11,13 @@ export default auth((req) => {
     return NextResponse.next()
   }
 
+  // Crons não têm sessão — autenticam por header próprio dentro da rota
+  // (isCronAuthorized). Sem este bypass, o middleware redirecionava o cron p/ /login.
+  const cronPaths = ['/api/demands/overdue', '/api/demands/sla-check', '/api/demands/escalation']
+  if (cronPaths.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next()
+  }
+
   // Sem sessão → redireciona para login
   if (!session) {
     const loginUrl = new URL('/login', req.url)

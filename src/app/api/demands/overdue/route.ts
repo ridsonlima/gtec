@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { createNotification } from '@/lib/notifications'
+import { isCronAuthorized } from '@/lib/cron'
 
 /**
  * POST /api/demands/overdue
@@ -17,9 +18,16 @@ import { createNotification } from '@/lib/notifications'
  *   }]
  * }
  */
+export async function GET(req: NextRequest) {
+  return runOverdue(req)
+}
+
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+  return runOverdue(req)
+}
+
+async function runOverdue(req: NextRequest) {
+  if (!isCronAuthorized(req)) {
     return apiError('Não autorizado', 401)
   }
 

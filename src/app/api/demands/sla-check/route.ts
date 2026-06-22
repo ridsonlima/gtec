@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { notifySlaBreach } from '@/lib/notifications'
+import { isCronAuthorized } from '@/lib/cron'
 
 /**
  * POST /api/demands/sla-check
@@ -9,9 +10,16 @@ import { notifySlaBreach } from '@/lib/notifications'
  * 1. Marca slaStatus='warning' para demandas cuja deadline vence em < 1h
  * 2. Marca slaStatus='breached' e escalada para diretoria em deadline ultrapassada
  */
+export async function GET(req: NextRequest) {
+  return runSlaCheck(req)
+}
+
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) return apiError('Não autorizado', 401)
+  return runSlaCheck(req)
+}
+
+async function runSlaCheck(req: NextRequest) {
+  if (!isCronAuthorized(req)) return apiError('Não autorizado', 401)
 
   const now = new Date()
   const oneHourFromNow = new Date(now.getTime() + 3600_000)
