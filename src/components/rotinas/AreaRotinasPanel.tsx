@@ -55,6 +55,14 @@ export function AreaRotinasPanel({ areaId, canManage, currentUserId, members }: 
     [rotinas]
   )
   const feitas = rotinas.filter((r) => r.entrega).length
+  const resumo = useMemo(() => {
+    const r = { pendente: 0, concluida: 0, parcial: 0, pendencias: 0, nao_realizada: 0 } as Record<string, number>
+    for (const x of rotinas) {
+      if (!x.entrega) r.pendente++
+      else r[x.entrega.status] = (r[x.entrega.status] ?? 0) + 1
+    }
+    return r
+  }, [rotinas])
 
   return (
     <div className="space-y-4">
@@ -82,7 +90,23 @@ export function AreaRotinasPanel({ areaId, canManage, currentUserId, members }: 
         <NovaRotinaForm areaId={areaId} members={members} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); refetch() }} />
       )}
 
-      {rotinas.length > 0 && <p className="text-xs text-gray-500">{feitas}/{rotinas.length} entregues no ciclo atual</p>}
+      {rotinas.length > 0 && canManage ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Resumo do ciclo</span>
+            <span className="text-xs text-gray-500">{feitas}/{rotinas.length} entregues</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <ResumoChip n={resumo.concluida} label="Concluídas" cls="bg-green-50 text-green-700 border-green-200" />
+            <ResumoChip n={resumo.parcial} label="Parciais" cls="bg-amber-50 text-amber-700 border-amber-200" />
+            <ResumoChip n={resumo.pendencias} label="Com pendências" cls="bg-orange-50 text-orange-700 border-orange-200" />
+            <ResumoChip n={resumo.nao_realizada} label="Não realizadas" cls="bg-red-50 text-red-700 border-red-200" />
+            <ResumoChip n={resumo.pendente} label="Pendentes (sem entrega)" cls="bg-gray-100 text-gray-600 border-gray-200" />
+          </div>
+        </div>
+      ) : (
+        rotinas.length > 0 && <p className="text-xs text-gray-500">{feitas}/{rotinas.length} entregues no ciclo atual</p>
+      )}
 
       {isLoading ? (
         <p className="text-sm text-gray-400">Carregando…</p>
@@ -106,6 +130,15 @@ export function AreaRotinasPanel({ areaId, canManage, currentUserId, members }: 
         </div>
       )}
     </div>
+  )
+}
+
+function ResumoChip({ n, label, cls }: { n: number; label: string; cls: string }) {
+  if (!n) return null
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${cls}`}>
+      <span className="font-bold">{n}</span> {label}
+    </span>
   )
 }
 
