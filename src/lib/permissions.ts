@@ -85,12 +85,11 @@ export function canAccessDemand(session: Session, demand: DemandAccess): boolean
   return false
 }
 
+// Editar/mudar status/apagar a demanda. Técnico (viewer) NÃO entra aqui — fica de
+// supervisor pra cima (supervisor: suas demandas; manager+: a área toda).
 export function canUpdateDemand(session: Session, demand: DemandAccess): boolean {
   const { role, id } = session.user
   if (role === 'master' || role === 'admin' || role === 'director') return true
-  // Responsável/colaborador sempre pode atualizar a PRÓPRIA demanda (ex.: técnico
-  // registra evolução / muda status do que é dele), independente do nível.
-  if (demand.responsibleId === id || (demand.collaboratorUserIds?.includes(id) ?? false)) return true
   if (role === 'manager') {
     return canAccessArea(session, demand.areaId) ||
       (demand.requestingAreaId ? canAccessArea(session, demand.requestingAreaId) : false)
@@ -101,10 +100,13 @@ export function canUpdateDemand(session: Session, demand: DemandAccess): boolean
   return false
 }
 
-// Qualquer colaborador convidado pode contribuir (add updates, comments, attachments)
-// mas não pode alterar status nem gerenciar colaboradores
+// "Atualizar": registrar evolução, comentar, anexar — SEM editar/apagar nem mudar
+// status. Liberado para qualquer membro da área (ex.: técnico atualiza as demandas
+// da sua área) e colaboradores convidados.
 export function canContributeToDemand(session: Session, demand: DemandAccess): boolean {
   if (canUpdateDemand(session, demand)) return true
+  if (canAccessArea(session, demand.areaId)) return true
+  if (demand.requestingAreaId && canAccessArea(session, demand.requestingAreaId)) return true
   return demand.collaboratorUserIds?.includes(session.user.id) ?? false
 }
 
