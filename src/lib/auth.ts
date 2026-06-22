@@ -66,24 +66,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id
         token.role = (user as any).role
         token.areaScopes = (user as any).areaScopes
-        return token
-      }
-      // Requisições seguintes: reidrata perfil e áreas do banco, para que mudanças
-      // de alçada valham na hora (sem precisar deslogar/relogar).
-      if (token.id) {
-        const fresh = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: {
-            role: true,
-            areaScopes: { select: { areaId: true, canWrite: true, isPrimary: true, area: { select: { name: true } } } },
-          },
-        })
-        if (fresh) {
-          token.role = fresh.role
-          token.areaScopes = fresh.areaScopes.map((s) => ({
-            areaId: s.areaId, areaName: s.area.name, canWrite: s.canWrite, isPrimary: s.isPrimary,
-          }))
-        }
       }
       return token
     },
