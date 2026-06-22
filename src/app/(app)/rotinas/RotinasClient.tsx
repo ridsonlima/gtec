@@ -3,8 +3,10 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Repeat, Plus, Check, Trash2, X, CalendarClock } from 'lucide-react'
+import { timeAgo } from '@/lib/utils'
 
 type Area = { id: string; name: string }
+type OverviewItem = { areaId: string; name: string; total: number; feitas: number; ultima: string | null }
 type Rotina = {
   id: string
   title: string
@@ -17,7 +19,7 @@ type Rotina = {
 const FREQ_LABEL: Record<string, string> = { diaria: 'Diárias', semanal: 'Semanais', mensal: 'Mensais' }
 const FREQ_ORDER = ['diaria', 'semanal', 'mensal']
 
-export function RotinasClient({ areas, canManage }: { areas: Area[]; canManage: boolean }) {
+export function RotinasClient({ areas, canManage, overview }: { areas: Area[]; canManage: boolean; overview?: OverviewItem[] | null }) {
   const [areaId, setAreaId] = useState(areas[0]?.id ?? '')
   const [showForm, setShowForm] = useState(false)
   const qc = useQueryClient()
@@ -65,6 +67,36 @@ export function RotinasClient({ areas, canManage }: { areas: Area[]; canManage: 
           </button>
         )}
       </div>
+
+      {overview && overview.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Panorama por área (visão diretoria)</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {overview.map((o) => {
+              const pct = o.total > 0 ? Math.round((o.feitas / o.total) * 100) : 0
+              return (
+                <button
+                  key={o.areaId}
+                  onClick={() => setAreaId(o.areaId)}
+                  className="text-left bg-gray-50 hover:bg-gray-100 rounded-lg p-3 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-gray-800 truncate">{o.name}</span>
+                    <span className={`text-xs font-semibold ${pct >= 80 ? 'text-green-600' : pct >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{o.feitas}/{o.total}</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                    <div className={`h-full rounded-full ${pct >= 80 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    {o.ultima ? `última atividade ${timeAgo(o.ultima)}` : 'sem atividade no ciclo'}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-3">Apenas acompanhamento — a gestão das rotinas é do supervisor de cada área.</p>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 flex-wrap">
         {areas.length > 1 && (
