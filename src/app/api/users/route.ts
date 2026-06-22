@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
         },
       },
     },
-    orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    orderBy: [{ name: 'asc' }],
   })
 
   return apiSuccess(users)

@@ -88,6 +88,9 @@ export function canAccessDemand(session: Session, demand: DemandAccess): boolean
 export function canUpdateDemand(session: Session, demand: DemandAccess): boolean {
   const { role, id } = session.user
   if (role === 'master' || role === 'admin' || role === 'director') return true
+  // Responsável/colaborador sempre pode atualizar a PRÓPRIA demanda (ex.: técnico
+  // registra evolução / muda status do que é dele), independente do nível.
+  if (demand.responsibleId === id || (demand.collaboratorUserIds?.includes(id) ?? false)) return true
   if (role === 'manager') {
     return canAccessArea(session, demand.areaId) ||
       (demand.requestingAreaId ? canAccessArea(session, demand.requestingAreaId) : false)
