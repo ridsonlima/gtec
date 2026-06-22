@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import type { Session } from 'next-auth'
-import { LayoutDashboard, Layers, FileText, Building2, Users, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, Activity, Handshake, GitBranch, List, LayoutGrid, Truck, Package, Receipt, ClipboardCheck, Wrench, Gauge, CheckSquare, Palmtree, Megaphone, FileBarChart, ListChecks, Gavel, FileSpreadsheet, HardHat } from 'lucide-react'
+import { LayoutDashboard, Layers, FileText, Building2, Users, UserCircle, LogOut, X, ChevronDown, ChevronRight, CalendarDays, ClipboardList, ArrowRightLeft, Briefcase, Activity, Handshake, GitBranch, List, LayoutGrid, Truck, Package, Receipt, ClipboardCheck, Wrench, Gauge, CheckSquare, Palmtree, Megaphone, FileBarChart, ListChecks, Gavel, FileSpreadsheet, HardHat, Repeat } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -257,6 +257,7 @@ export function Sidebar({ session, onClose }: SidebarProps) {
 
         <div className="border-t border-gray-700 my-2" />
         <NavItem href="/minhas-tarefas" icon={<CheckSquare className="w-4 h-4" />} label="Minhas Tarefas" active={isActive('/minhas-tarefas')} />
+        <NavItem href="/rotinas" icon={<Repeat className="w-4 h-4" />} label="Rotinas" active={isActive('/rotinas')} />
 
         {(isLeadership || isCoordinator) && (
           <NavItem href="/cobertura" icon={<Palmtree className="w-4 h-4" />} label="Cobertura" active={isActive('/cobertura')} />

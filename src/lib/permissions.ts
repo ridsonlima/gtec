@@ -14,6 +14,11 @@ export function isManagerOrAbove(role: UserRole) {
   return ['master', 'admin', 'director', 'manager'].includes(role)
 }
 
+// Quem pode criar/editar rotinas de uma área (inclui supervisor da área).
+export function canManageRotina(role: UserRole) {
+  return ['master', 'admin', 'director', 'manager', 'supervisor'].includes(role)
+}
+
 export function canAccessArea(
   session: Session,
   areaId: string,
