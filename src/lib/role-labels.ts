@@ -13,9 +13,18 @@ export const ROLE_LABELS: Record<string, string> = {
   director:   'Diretor',
   manager:    'Coordenador',
   supervisor: 'Supervisor',
-  viewer:     'Visualizador',
+  viewer:     'Técnico',
 }
 
 export function getRoleLabel(role: string): string {
   return ROLE_LABELS[role] ?? role
 }
+
+// Funções selecionáveis em novos cadastros (vocabulário da CDG; sem "master" legado).
+export const ASSIGNABLE_ROLES: { value: string; label: string }[] = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'director', label: 'Diretor' },
+  { value: 'manager', label: 'Coordenador' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'viewer', label: 'Técnico' },
+]

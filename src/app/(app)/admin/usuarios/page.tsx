@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Edit2, Save, Trash2, Users, X, Clock, LogIn } from 'lucide-react'
+import { ASSIGNABLE_ROLES, getRoleLabel } from '@/lib/role-labels'
 
 function tempoRelativo(dataISO: string | null | undefined): string {
   if (!dataISO) return 'Nunca acessou'
@@ -20,14 +21,7 @@ function tempoRelativo(dataISO: string | null | undefined): string {
   return `Há ${mes} mês${mes > 1 ? 'es' : ''}`
 }
 
-const ROLES = [
-  { value: 'master', label: 'Master' },
-  { value: 'admin', label: 'Administrador' },
-  { value: 'director', label: 'Diretor' },
-  { value: 'manager', label: 'Coordenador' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'viewer', label: 'Visualizador' },
-]
+const ROLES = ASSIGNABLE_ROLES
 
 type UserForm = {
   name: string
@@ -59,7 +53,7 @@ export default function UsersAdminPage() {
   const areas = areasData?.data ?? []
 
   function roleLabel(role: string) {
-    return ROLES.find((item) => item.value === role)?.label ?? role
+    return getRoleLabel(role)
   }
 
   function toggleArea(areaId: string) {
