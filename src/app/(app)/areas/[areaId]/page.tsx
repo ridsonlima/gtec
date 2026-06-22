@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
+import { DemandSignalBadges } from '@/components/demands/DemandSignalBadges'
+import { computeDemandSignals } from '@/lib/demandSignals'
 import {
   FileText, AlertTriangle, Briefcase, Plus, ChevronRight,
   Clock, CheckCircle2, AlertCircle, CalendarRange, Edit2,
@@ -87,6 +89,7 @@ export default async function AreaDetailPage({
         responsible: { select: { id: true, name: true } },
         contract: { select: { id: true, number: true } },
         _count: { select: { comments: true, attachments: true } },
+        updates: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
       },
     }),
 
@@ -104,6 +107,13 @@ export default async function AreaDetailPage({
       },
     }),
   ])
+
+  // Mapa de "última visualização" do usuário → selo "Novo" nas demandas
+  const demandViews = await prisma.demandView.findMany({
+    where: { userId: session.user.id, demandId: { in: demands.map((d) => d.id) } },
+    select: { demandId: true, viewedAt: true },
+  })
+  const viewMap = new Map(demandViews.map((v) => [v.demandId, v.viewedAt]))
 
   // Opções dos filtros (responsáveis e contratos da área)
   const [contratosArea, demandResp, contractResp, reportAuthors] = await Promise.all([
@@ -378,20 +388,26 @@ export default async function AreaDetailPage({
             <div className="space-y-2">
               {demands.map((d) => {
                 const dias = d.dueDate ? Math.ceil((new Date(d.dueDate).getTime() - Date.now()) / 86400000) : null
+                const signals = computeDemandSignals({
+                  status: d.status,
+                  dueDate: d.dueDate,
+                  updatedAt: d.updatedAt,
+                  createdAt: d.createdAt,
+                  lastActivityAt: d.updates[0]?.createdAt ?? d.createdAt,
+                  viewedAt: viewMap.get(d.id),
+                })
                 return (
                   <Link
                     key={d.id}
                     href={`/demandas/${d.id}`}
-                    className={`block bg-white rounded-xl border px-4 py-3 hover:shadow-md transition-shadow ${d.isOverdue ? 'border-l-4 border-l-red-500 border-gray-100' : 'border-gray-100'}`}
+                    className={`block rounded-xl border px-4 py-3 hover:shadow-md transition-shadow ${signals.unread ? 'bg-blue-50/60' : 'bg-white'} ${d.isOverdue ? 'border-l-4 border-l-red-500 border-gray-100' : 'border-gray-100'}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap mb-1">
                           <PriorityBadge priority={d.priority} />
                           <StatusBadge status={d.status} />
-                          {d.isOverdue && (
-                            <span className="text-[11px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full border border-red-200">VENCIDA</span>
-                          )}
+                          <DemandSignalBadges d={signals} />
                         </div>
                         <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-snug">{d.title}</p>
                         <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400 flex-wrap">
