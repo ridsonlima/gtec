@@ -271,6 +271,7 @@ export function Sidebar({ session, onClose }: SidebarProps) {
               label="Relatórios"
               active={isActive('/relatorio-executivo') || isActive('/analytics') || isActive('/relatorio-interarea')}
             />
+            <NavItem href="/engajamento" icon={<Activity className="w-4 h-4" />} label="Engajamento" active={isActive('/engajamento')} />
             <NavItem href="/admin/usuarios" icon={<Users className="w-4 h-4" />} label="Usuários" active={isActive('/admin/usuarios')} />
             <NavItem href="/admin/importar" icon={<FileSpreadsheet className="w-4 h-4" />} label="Importar CSV" active={isActive('/admin/importar')} />
           </>
