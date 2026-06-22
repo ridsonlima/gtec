@@ -43,3 +43,6 @@ tsconfig.tsbuildinfo
 
 # Local agent settings
 .claude/
+
+# Relatórios gerados (dados internos, não versionar)
+relatorios/
