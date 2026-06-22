@@ -1640,26 +1640,30 @@ model ComunicadoLeitura {
 
 // Rotinas operacionais da área (recorrentes) — geridas pelo supervisor, fora das Demandas.
 model RotinaArea {
-  id          String   @id @default(uuid())
-  areaId      String   @map("area_id")
-  title       String
-  descricao   String?
-  frequencia  String   @default("semanal") // diaria | semanal | mensal
-  ativo       Boolean  @default(true)
-  createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  areaId        String   @map("area_id")
+  responsavelId String   @map("responsavel_id") // usuário dono da rotina
+  title         String
+  descricao     String?
+  frequencia    String   @default("semanal") // diaria | semanal | mensal
+  ativo         Boolean  @default(true)
+  createdById   String   @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   conclusoes RotinaConclusao[]
 
   @@index([areaId, ativo])
+  @@index([responsavelId])
   @@map("rotinas_area")
 }
 
+// Entrega de uma rotina em um ciclo (texto e/ou arquivos via Attachment objectType='rotina_entrega')
 model RotinaConclusao {
   id             String   @id @default(uuid())
   rotinaId       String   @map("rotina_id")
   periodo        String // chave do ciclo (ex: 2026-06-22 | 2026-W26 | 2026-06)
+  texto          String?
   concluidoEm    DateTime @default(now()) @map("concluido_em")
   concluidoPorId String   @map("concluido_por_id")
 

@@ -1,7 +1,8 @@
 ﻿import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { canAccessArea, canManageSeguranca } from '@/lib/permissions'
+import { canAccessArea, canManageSeguranca, canManageRotina } from '@/lib/permissions'
+import { AreaRotinasPanel } from '@/components/rotinas/AreaRotinasPanel'
 import Link from 'next/link'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -136,8 +137,25 @@ export default async function AreaDetailPage({
   const isSegTrabalho = params.areaId === 'seg-trabalho'
   const isPlanejamento = params.areaId === 'planejamento'
   const isObrasProprias = params.areaId === 'obras-proprias'
-  const hasTabs = isSegTrabalho || isPlanejamento || isObrasProprias
-  const activeTab = hasTabs ? (searchParams.tab ?? 'visao-geral') : 'visao-geral'
+  const activeTab = searchParams.tab ?? 'visao-geral'
+
+  // Membros da área (para atribuir rotinas) + permissão de líder
+  const memberScopes = await prisma.userAreaScope.findMany({
+    where: { areaId: area.id },
+    include: { user: { select: { id: true, name: true, isActive: true } } },
+  })
+  const membersMap = new Map<string, { id: string; name: string }>()
+  for (const s of memberScopes) if (s.user?.isActive) membersMap.set(s.user.id, { id: s.user.id, name: s.user.name })
+  if (area.responsible) membersMap.set(area.responsible.id, { id: area.responsible.id, name: area.responsible.name })
+  const rotinaMembers = Array.from(membersMap.values())
+  const canManageRotinas = canManageRotina(session.user.role)
+
+  // Abas (todas as áreas têm Visão Geral + Rotinas; algumas têm abas extras)
+  const tabs: { key: string; label: string }[] = [{ key: 'visao-geral', label: 'Visão Geral' }]
+  if (isSegTrabalho) tabs.push({ key: 'dashboard', label: 'Dashboard' }, { key: 'acidentes', label: 'Acidentes' })
+  if (isPlanejamento) tabs.push({ key: 'acompanhamento', label: 'Acompanhamento de Obras' })
+  if (isObrasProprias) tabs.push({ key: 'gestao', label: 'Gestão de Obra' })
+  tabs.push({ key: 'rotinas', label: 'Rotinas' })
 
   const isDirector = session.user.role === 'master' || session.user.role === 'director' || session.user.role === 'admin'
   const canWrite =
@@ -219,72 +237,29 @@ export default async function AreaDetailPage({
         </div>
       </div>
 
-      {/* Tab bar — only for Seg. do Trab. */}
-      {isSegTrabalho && (
-        <div className="flex gap-1 border-b border-gray-200">
-          {[
-            { key: 'visao-geral', label: 'Visão Geral', href: '/areas/seg-trabalho' },
-            { key: 'dashboard',   label: 'Dashboard',   href: '/areas/seg-trabalho?tab=dashboard' },
-            { key: 'acidentes',   label: 'Acidentes',   href: '/areas/seg-trabalho?tab=acidentes' },
-          ].map((t) => (
-            <Link
-              key={t.key}
-              href={t.href}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === t.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </div>
-      )}
+      {/* Abas da área (unificadas) */}
+      <div className="flex gap-1 border-b border-gray-200 flex-wrap">
+        {tabs.map((t) => (
+          <Link
+            key={t.key}
+            href={t.key === 'visao-geral' ? `/areas/${params.areaId}` : `/areas/${params.areaId}?tab=${t.key}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
 
-      {/* Tab bar — Planejamento (Acompanhamento de Obras) */}
-      {isPlanejamento && (
-        <div className="flex gap-1 border-b border-gray-200">
-          {[
-            { key: 'visao-geral',    label: 'Visão Geral',            href: '/areas/planejamento' },
-            { key: 'acompanhamento', label: 'Acompanhamento de Obras', href: '/areas/planejamento?tab=acompanhamento' },
-          ].map((t) => (
-            <Link
-              key={t.key}
-              href={t.href}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </div>
+      {/* Rotinas da área */}
+      {activeTab === 'rotinas' && (
+        <AreaRotinasPanel areaId={area.id} canManage={canManageRotinas} currentUserId={session.user.id} members={rotinaMembers} />
       )}
 
       {/* Acompanhamento de Obras (Planejamento) */}
       {isPlanejamento && activeTab === 'acompanhamento' && (
         <AcompanhamentoPanel />
-      )}
-
-      {/* Tab bar — Obras Próprias (Gestão de Obra) */}
-      {isObrasProprias && (
-        <div className="flex gap-1 border-b border-gray-200">
-          {[
-            { key: 'visao-geral', label: 'Visão Geral',     href: '/areas/obras-proprias' },
-            { key: 'gestao',      label: 'Gestão de Obra',  href: '/areas/obras-proprias?tab=gestao' },
-          ].map((t) => (
-            <Link
-              key={t.key}
-              href={t.href}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </div>
       )}
 
       {/* Gestão de Obra (Obras Próprias) */}
