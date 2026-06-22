@@ -5,6 +5,7 @@ import type { Session } from 'next-auth'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { CommandPalette } from './CommandPalette'
+import { WhatsNewModal } from './WhatsNewModal'
 import { AusenciaBanner } from '@/components/shared/AusenciaBanner'
 
 interface AppShellProps {
@@ -66,6 +67,7 @@ export function AppShell({ session, children }: AppShellProps) {
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <WhatsNewModal />
     </div>
   )
 }

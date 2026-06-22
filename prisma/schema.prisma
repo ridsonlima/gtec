@@ -1606,6 +1606,7 @@ model Comunicado {
   body        String
   authorId    String   @map("author_id")
   prioridade  String   @default("normal")  // normal | importante | urgente
+  categoria   String   @default("comunicado") // comunicado | novidade (changelog do sistema)
   alvoTipo    String   @default("todos") @map("alvo_tipo")    // todos | area
   alvoAreaId  String?  @map("alvo_area_id")
   exigeAceite Boolean  @default(true) @map("exige_aceite")

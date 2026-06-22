@@ -206,6 +206,7 @@ function ComunicadoCard({ c, canManage, currentUserId, onChange }: { c: Comunica
 function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClose: () => void; onSaved: () => void }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [categoria, setCategoria] = useState('comunicado')
   const [prioridade, setPrioridade] = useState('normal')
   const [alvoTipo, setAlvoTipo] = useState('todos')
   const [alvoAreaId, setAlvoAreaId] = useState('')
@@ -222,7 +223,7 @@ function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClos
       const res = await fetch('/api/comunicados', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, prioridade, alvoTipo, alvoAreaId: alvoTipo === 'area' ? alvoAreaId : null, exigeAceite }),
+        body: JSON.stringify({ title, body, categoria, prioridade, alvoTipo, alvoAreaId: alvoTipo === 'area' ? alvoAreaId : null, exigeAceite }),
       })
       const d = await res.json()
       if (!res.ok || d?.success === false) { setError(d?.error ?? 'Erro ao publicar'); return }
@@ -240,8 +241,16 @@ function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClos
       </div>
 
       <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+        <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className={INPUT}>
+          <option value="comunicado">Comunicado (negócio)</option>
+          <option value="novidade">Novidade do sistema (aparece no login como "O que há de novo")</option>
+        </select>
+      </div>
+
+      <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Nova política de ponto a partir de junho" className={INPUT} autoFocus />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={categoria === 'novidade' ? 'Ex: Nova sinalização de demandas' : 'Ex: Nova política de ponto a partir de junho'} className={INPUT} autoFocus />
       </div>
 
       <div>
@@ -277,10 +286,12 @@ function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClos
         </div>
       )}
 
-      <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" checked={exigeAceite} onChange={(e) => setExigeAceite(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-        Exigir confirmação de ciência (leitura obrigatória)
-      </label>
+      {categoria !== 'novidade' && (
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={exigeAceite} onChange={(e) => setExigeAceite(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+          Exigir confirmação de ciência (leitura obrigatória)
+        </label>
+      )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 

@@ -5,6 +5,7 @@ import { apiSuccess, apiError } from '@/types/api'
 import { isManagerOrAbove, isDirector } from '@/lib/permissions'
 
 const PRIORIDADES = ['normal', 'importante', 'urgente'] as const
+const CATEGORIAS = ['comunicado', 'novidade'] as const
 
 // GET /api/comunicados — lista comunicados relevantes ao usuário, com status de leitura/aceite
 export async function GET(req: NextRequest) {
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
     title: c.title,
     body: c.body,
     prioridade: c.prioridade,
+    categoria: c.categoria,
     alvoTipo: c.alvoTipo,
     alvoArea: c.alvoArea,
     exigeAceite: c.exigeAceite,
@@ -63,12 +65,16 @@ export async function POST(req: NextRequest) {
   if (!isManagerOrAbove(session.user.role)) return apiError('Sem permissão', 403)
 
   const body = await req.json()
-  const { title, body: texto, prioridade = 'normal', alvoTipo = 'todos', alvoAreaId, exigeAceite = true } = body
+  const { title, body: texto, prioridade = 'normal', categoria = 'comunicado', alvoTipo = 'todos', alvoAreaId, exigeAceite = true } = body
 
   if (!title?.trim()) return apiError('Título obrigatório', 400)
   if (!texto?.trim()) return apiError('Conteúdo obrigatório', 400)
   if (!PRIORIDADES.includes(prioridade)) return apiError('Prioridade inválida', 400)
+  if (!CATEGORIAS.includes(categoria)) return apiError('Categoria inválida', 400)
   if (alvoTipo === 'area' && !alvoAreaId) return apiError('Selecione a área de destino', 400)
+
+  // Novidades (changelog do sistema) nunca exigem aceite formal — basta a leitura.
+  const isNovidade = categoria === 'novidade'
 
   const comunicado = await prisma.comunicado.create({
     data: {
@@ -76,9 +82,10 @@ export async function POST(req: NextRequest) {
       body: texto.trim(),
       authorId: session.user.id,
       prioridade,
+      categoria,
       alvoTipo,
       alvoAreaId: alvoTipo === 'area' ? alvoAreaId : null,
-      exigeAceite: Boolean(exigeAceite),
+      exigeAceite: isNovidade ? false : Boolean(exigeAceite),
     },
     include: {
       author:   { select: { id: true, name: true } },
