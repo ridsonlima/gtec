@@ -97,6 +97,15 @@ export async function POST(req: NextRequest) {
   if (!usuario)    return apiError('Usuário ausente não encontrado', 404)
   if (!substituto) return apiError('Substituto não encontrado', 404)
 
+  // Coordenador só registra ausência de quem é da sua equipe (diretoria registra qualquer um)
+  const isLeadership = ['master', 'admin', 'director'].includes(session.user.role)
+  if (!isLeadership) {
+    const myAreaIds = session.user.areaScopes.map((s) => s.areaId)
+    const alvoScopes = await prisma.userAreaScope.findMany({ where: { userId: usuarioId }, select: { areaId: true } })
+    const daEquipe = alvoScopes.some((s) => myAreaIds.includes(s.areaId))
+    if (!daEquipe) return apiError('Você só pode registrar ausência de membros da sua área', 403)
+  }
+
   const aviso = await prisma.avisoAusencia.create({
     data: {
       usuarioId,

@@ -457,8 +457,8 @@ export default function CoberturaPage() {
   })
 
   const { data: usersData } = useQuery({
-    queryKey: ['users-list'],
-    queryFn:  () => fetch('/api/users').then((r) => r.json()),
+    queryKey: ['users-list-team'],
+    queryFn:  () => fetch('/api/users?team=true').then((r) => r.json()),
   })
 
   const avisos: Aviso[]       = avisosData?.data ?? []

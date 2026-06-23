@@ -10,17 +10,32 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const areaId = searchParams.get('areaId')
+  const team = searchParams.get('team') === 'true'
+  const isLeadership = ['master', 'admin', 'director'].includes(session.user.role)
+
+  let where: any = { isActive: true }
+  if (areaId) {
+    where = {
+      isActive: true,
+      OR: [
+        { role: { in: ['master', 'admin', 'director'] } },
+        { areaScopes: { some: { areaId } } },
+      ],
+    }
+  } else if (team && !isLeadership) {
+    // Equipe do solicitante: ele mesmo + quem compartilha alguma área dele
+    const myAreaIds = session.user.areaScopes.map((s) => s.areaId)
+    where = {
+      isActive: true,
+      OR: [
+        { id: session.user.id },
+        { areaScopes: { some: { areaId: { in: myAreaIds } } } },
+      ],
+    }
+  }
 
   const users = await prisma.user.findMany({
-    where: areaId
-      ? {
-          isActive: true,
-          OR: [
-            { role: { in: ['master', 'admin', 'director'] } },
-            { areaScopes: { some: { areaId } } },
-          ],
-        }
-      : { isActive: true },
+    where,
     select: {
       id: true,
       name: true,
