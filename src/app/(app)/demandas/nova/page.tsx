@@ -72,7 +72,7 @@ export default function NovaDemandaPage() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }))
 
-  const { data: areasData } = useQuery({ queryKey: ['areas', 'leaf'], queryFn: () => fetch('/api/areas?leafOnly=true').then((r) => r.json()) })
+  const { data: areasData } = useQuery({ queryKey: ['areas', 'with-parents'], queryFn: () => fetch('/api/areas').then((r) => r.json()) })
   const { data: projectsData } = useQuery({
     queryKey: ['projects-by-contract', form.contractId],
     queryFn: () => fetch(`/api/projects?contractId=${form.contractId}`).then((r) => r.json()),
@@ -230,7 +230,7 @@ export default function NovaDemandaPage() {
               className="input"
             >
               <option value="">Selecione a área...</option>
-              {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              {areas.map((a: any) => <option key={a.id} value={a.id}>{a.parentId ? '— ' : ''}{a.name}</option>)}
             </select>
           </Field>
 
@@ -244,7 +244,7 @@ export default function NovaDemandaPage() {
                 <option value="">Selecione a área...</option>
                 {areas
                   .filter((a: any) => a.id !== form.areaId)
-                  .map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  .map((a: any) => <option key={a.id} value={a.id}>{a.parentId ? '— ' : ''}{a.name}</option>)}
               </select>
             </Field>
           )}
