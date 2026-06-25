@@ -57,6 +57,12 @@ export function Sidebar({ session, onClose }: SidebarProps) {
   const isLeadership = role === 'master' || role === 'director' || role === 'admin'
   const isCoordinator = role === 'manager'
   const showDashboard = isLeadership || isCoordinator
+  // CDG RENTAL / Equipamentos: liberado para quem tem essa área no escopo (qualquer nível)
+  const hasRentalAccess = isLeadership || isCoordinator ||
+    ((session.user.areaScopes as any[] | undefined) ?? []).some((s) => {
+      const n = (s.areaName ?? '').toLowerCase()
+      return n.includes('rental') || n.includes('equipamento')
+    })
   const showFuncionarios = canManageFuncionarios(session)
 
   // Comunicados pendentes de "ciente" → badge de destaque
@@ -211,7 +217,7 @@ export function Sidebar({ session, onClose }: SidebarProps) {
         <NavItem href="/contratos" icon={<FileText className="w-4 h-4" />} label="Contratos" active={isActive('/contratos')} />
 
         {/* CDG RENTAL */}
-        {(isLeadership || isCoordinator) && (
+        {hasRentalAccess && (
           <div>
             {/* Pai: CDG RENTAL */}
             <button
