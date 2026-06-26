@@ -19,6 +19,17 @@ export function canManageRotina(role: UserRole) {
   return ['master', 'admin', 'director', 'manager', 'supervisor'].includes(role)
 }
 
+// Quem pode VISUALIZAR o módulo CDG Rental / Equipamentos (a equipe da área, em
+// qualquer nível). As ações de gerir continuam gated por isManagerOrAbove dentro
+// de cada tela.
+export function canViewRental(session: Session): boolean {
+  if (isManagerOrAbove(session.user.role)) return true
+  return (session.user.areaScopes ?? []).some((s: any) => {
+    const n = (s.areaName ?? '').toLowerCase()
+    return n.includes('rental') || n.includes('equipamento')
+  })
+}
+
 export function canAccessArea(
   session: Session,
   areaId: string,
