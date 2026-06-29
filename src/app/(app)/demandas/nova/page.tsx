@@ -84,11 +84,12 @@ export default function NovaDemandaPage() {
     enabled: Boolean(form.areaId),
   })
 
-  // Responsável: se interárea usa busca global, senão lista da área executora
+  // Responsável (não interárea): carrega o time do próprio criador, de forma confiável
+  // e independente da área selecionada (coordenador atribui sua equipe).
   const { data: usersAreaData } = useQuery({
-    queryKey: ['users-area', form.areaId],
-    queryFn: () => fetch(`/api/users?areaId=${form.areaId}`).then((r) => r.json()),
-    enabled: Boolean(form.areaId) && !isInterArea,
+    queryKey: ['users-team-resp'],
+    queryFn: () => fetch('/api/users?team=true').then((r) => r.json()),
+    enabled: !isInterArea,
   })
   const { data: collabSearchData } = useQuery({
     queryKey: ['users-search', collaboratorSearch],
