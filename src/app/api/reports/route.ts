@@ -107,8 +107,9 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
 
-  // Managers, supervisores, admin e director podem criar reports
-  if (!['manager', 'supervisor', 'admin', 'master', 'director'].includes(session.user.role)) {
+  // Técnico (viewer), supervisor, coordenador, admin e diretor podem criar reports
+  // (o técnico precisa ter canWrite na área — validado abaixo por canAccessArea).
+  if (!['viewer', 'manager', 'supervisor', 'admin', 'master', 'director'].includes(session.user.role)) {
     return apiError('Sem permissão para criar reports', 403)
   }
 

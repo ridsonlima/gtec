@@ -15,11 +15,15 @@ export async function GET(req: NextRequest) {
 
   let where: any = { isActive: true }
   if (areaId) {
+    // Diretoria + quem é da área + o time do próprio solicitante (para o coordenador
+    // sempre conseguir atribuir sua equipe, mesmo escolhendo uma subárea).
+    const myAreaIds = isLeadership ? [] : session.user.areaScopes.map((s) => s.areaId)
     where = {
       isActive: true,
       OR: [
         { role: { in: ['master', 'admin', 'director'] } },
         { areaScopes: { some: { areaId } } },
+        ...(myAreaIds.length ? [{ areaScopes: { some: { areaId: { in: myAreaIds } } } }] : []),
       ],
     }
   } else if (team && !isLeadership) {
