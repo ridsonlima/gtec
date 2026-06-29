@@ -15,7 +15,7 @@ export async function GET() {
   const where: any = {
     ativo: true,
     categoria: 'novidade',
-    leituras: { none: { userId: session.user.id, lidoEm: { not: null } } },
+    leituras: { none: { userId: session.user.id } },
   }
   if (!verTudo) {
     where.OR = [

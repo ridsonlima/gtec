@@ -5,7 +5,8 @@ import { apiSuccess, apiError } from '@/types/api'
 import { z } from 'zod'
 
 type Params = { params: { id: string } }
-const PODE_ESCREVER = ['master', 'admin', 'director', 'manager', 'supervisor']
+const PODE_ESCREVER = ['master', 'admin', 'director', 'manager', 'supervisor', 'viewer'] // criar/preencher
+const PODE_APAGAR = ['master', 'admin', 'director', 'manager', 'supervisor']            // apagar (sem técnico)
 
 const FuncaoSchema = z.object({ funcao: z.string().min(1).max(120), quantidade: z.number().int().min(0) })
 const AtivoSchema = z.object({
@@ -129,7 +130,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (!PODE_ESCREVER.includes(session.user.role)) return apiError('Sem permissão', 403)
+  if (!PODE_APAGAR.includes(session.user.role)) return apiError('Sem permissão', 403)
 
   const exists = await prisma.relatorioAcompanhamento.findUnique({ where: { id: params.id }, select: { id: true } })
   if (!exists) return apiError('Relatório não encontrado', 404)

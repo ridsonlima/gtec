@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (areaId) {
     // Diretoria + quem é da área + o time do próprio solicitante (para o coordenador
     // sempre conseguir atribuir sua equipe, mesmo escolhendo uma subárea).
-    const myAreaIds = isLeadership ? [] : session.user.areaScopes.map((s) => s.areaId)
+    const myAreaIds = isLeadership ? [] : (session.user.areaScopes ?? []).map((s) => s.areaId)
     where = {
       isActive: true,
       OR: [
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
   } else if (team && !isLeadership) {
     // Equipe do solicitante: ele mesmo + quem compartilha alguma área dele
-    const myAreaIds = session.user.areaScopes.map((s) => s.areaId)
+    const myAreaIds = (session.user.areaScopes ?? []).map((s) => s.areaId)
     where = {
       isActive: true,
       OR: [

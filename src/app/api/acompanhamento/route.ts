@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { z } from 'zod'
 
-const PODE_ESCREVER = ['master', 'admin', 'director', 'manager', 'supervisor']
+const PODE_ESCREVER = ['master', 'admin', 'director', 'manager', 'supervisor', 'viewer']
 
 const CreateSchema = z.object({
   contratoId: z.string().uuid(),
