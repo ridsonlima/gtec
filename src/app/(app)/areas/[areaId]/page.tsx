@@ -161,6 +161,11 @@ export default async function AreaDetailPage({
   const canWrite =
     (session.user.role === 'master' || session.user.role === 'admin') ||
     session.user.areaScopes?.some((s) => s.areaId === area.id && s.canWrite)
+  // Coordenador (manager) com escopo nesta área: pode criar demanda e ver pautas da área
+  const isAreaManager =
+    session.user.role === 'manager' &&
+    (session.user.areaScopes?.some((s) => s.areaId === area.id) ?? false)
+  const podeGerirArea = isDirector || isAreaManager
 
   const overdueDemands = demands.filter((d) => d.isOverdue).length
   const demandsAltaPrioridade = demands.filter((d) => d.priority === 'critical' || d.priority === 'high').length
@@ -210,14 +215,16 @@ export default async function AreaDetailPage({
             </Link>
           )}
           {isDirector && (
+            <Link
+              href={`/areas/${params.areaId}/editar`}
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              Editar área
+            </Link>
+          )}
+          {podeGerirArea && (
             <>
-              <Link
-                href={`/areas/${params.areaId}/editar`}
-                className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />
-                Editar área
-              </Link>
               <Link
                 href={`/pauta?areaId=${area.id}`}
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
