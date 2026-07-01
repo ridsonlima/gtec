@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return apiError('Inicie a visita antes de registrar itens', 400)
 
   const podeRegistrar =
-    ['master', 'admin', 'manager'].includes(session.user.role) ||
+    ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role) ||
     visita.auditorId === session.user.id
   if (!podeRegistrar) return apiError('Sem permissão', 403)
 
@@ -79,7 +79,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return apiError('Inicie a visita antes de registrar itens', 400)
 
   const podeRegistrar =
-    ['master', 'admin', 'manager'].includes(session.user.role) ||
+    ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role) ||
     visita.auditorId === session.user.id
   if (!podeRegistrar) return apiError('Sem permissão', 403)
 

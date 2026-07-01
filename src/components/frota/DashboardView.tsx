@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import { Gauge, Truck, Package, AlertTriangle, Wrench, ClipboardCheck, Receipt } from 'lucide-react'
 import Link from 'next/link'
 import { TipoSwitcher } from '@/components/frota/TipoSwitcher'
@@ -38,7 +38,7 @@ const CONFIG = {
 export async function DashboardView({ tipo }: { tipo: Tipo }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const cfg = CONFIG[tipo]
   const Icon = cfg.icon

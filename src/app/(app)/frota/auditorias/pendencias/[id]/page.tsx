@@ -33,7 +33,7 @@ export default async function FrotaPendenciaDetalhePage({ params }: { params: { 
   const hoje = new Date()
   const vencida = pendencia.prazo && new Date(pendencia.prazo) < hoje && pendencia.status !== 'resolvida'
 
-  const canGestor = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canGestor = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
 
   return (
     <div className="max-w-2xl space-y-5">

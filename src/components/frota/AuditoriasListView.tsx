@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import {
   ClipboardCheck, Plus, ChevronRight, CheckCircle2,
@@ -28,7 +28,7 @@ const CONFIG = {
 export async function AuditoriasListView({ tipo, searchParams }: { tipo: Tipo; searchParams: SP }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const cfg = CONFIG[tipo]
   const { status = '', contratoId = '' } = searchParams
@@ -63,7 +63,7 @@ export async function AuditoriasListView({ tipo, searchParams }: { tipo: Tipo; s
 
   const countByStatus = Object.fromEntries(contadores.map((c) => [c.status, c._count.status]))
   const total = Object.values(countByStatus).reduce((a, b) => a + b, 0)
-  const canGestor = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canGestor = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
 
   function buildHref(params: Record<string, string>) {
     const merged = { status, contratoId, ...params }

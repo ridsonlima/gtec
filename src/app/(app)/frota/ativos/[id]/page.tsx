@@ -82,7 +82,7 @@ export default async function FrotaAtivoDetalhePage({ params }: { params: { id: 
   const alocacoesHist = ativo.alocacoes.filter((a) => a.dataFim)
   const osAbertas     = ativo.ordensServico.filter((o) => ['aberta', 'em_execucao'].includes(o.status))
   const osHist        = ativo.ordensServico.filter((o) => ['concluida', 'cancelada'].includes(o.status))
-  const canEdit       = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canEdit       = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
   const canDelete     = ['master', 'admin'].includes(session.user.role)
   const TipoIcon      = ativo.tipo === 'veiculo' ? Truck : Package
 

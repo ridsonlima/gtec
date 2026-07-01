@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { z } from 'zod'
 
-const PODE = ['master', 'admin', 'manager']
+const PODE = ['master', 'admin', 'manager', 'supervisor']
 
 const CreateSchema = z.object({
   nome:         z.string().min(1).max(120),

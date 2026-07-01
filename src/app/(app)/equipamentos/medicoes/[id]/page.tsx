@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { MedicaoAcoesBtn } from '@/components/frota/MedicaoAcoesBtn'
 import {
@@ -26,7 +26,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 export default async function EquipamentosMedicaoDetalhePage({ params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const medicao = await prisma.medicaoLocacao.findUnique({
     where: { id: params.id },
@@ -52,7 +52,7 @@ export default async function EquipamentosMedicaoDetalhePage({ params }: { param
   const mesLabel = MESES[(medicao.competenciaMes - 1)] ?? ''
 
   const totalItems = medicao.itens.reduce((a, i) => a + i.totalItem, 0)
-  const canEditItens = ['master', 'admin', 'manager'].includes(session.user.role) &&
+  const canEditItens = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role) &&
     ['rascunho', 'rejeitada'].includes(medicao.status)
 
   return (

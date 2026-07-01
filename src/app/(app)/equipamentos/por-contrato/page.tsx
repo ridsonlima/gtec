@@ -1,14 +1,14 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { Package, ArrowLeft, Wrench, ExternalLink } from 'lucide-react'
 
 export default async function EquipamentosPorContratoPage() {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const alocacoes = await prisma.alocacaoAtivo.findMany({
     where: {

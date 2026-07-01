@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { OSAcoesInline } from '@/components/frota/OSAcoesInline'
 import { OSNewUpdateForm, OSUpdatesFeed, OSEditForm } from '@/components/frota/OSUpdatePanel'
@@ -20,7 +20,7 @@ const STATUS_META: Record<string, { label: string; cls: string; icon: any }> = {
 export default async function OSDetailPage({ params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const os = await prisma.ordemServico.findUnique({
     where: { id: params.id },
@@ -41,7 +41,7 @@ export default async function OSDetailPage({ params }: { params: { id: string } 
 
   if (!os) notFound()
 
-  const canGestor = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canGestor = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
   const meta = STATUS_META[os.status] ?? STATUS_META.aberta
   const StatusIcon = meta.icon
   const isCorretiva = os.tipo === 'corretiva'

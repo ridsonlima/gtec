@@ -7,7 +7,7 @@ import { apiSuccess, apiError } from '@/types/api'
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (!['master', 'admin', 'manager'].includes(session.user.role))
+  if (!['master', 'admin', 'manager', 'supervisor'].includes(session.user.role))
     return apiError('Sem permissão', 403)
 
   const ativo = await prisma.ativo.findUnique({ where: { id: params.id } })
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (!['master', 'admin', 'manager'].includes(session.user.role))
+  if (!['master', 'admin', 'manager', 'supervisor'].includes(session.user.role))
     return apiError('Sem permissão', 403)
 
   const alocacaoAtiva = await prisma.alocacaoAtivo.findFirst({
@@ -82,7 +82,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (!['master', 'admin', 'manager'].includes(session.user.role))
+  if (!['master', 'admin', 'manager', 'supervisor'].includes(session.user.role))
     return apiError('Sem permissão', 403)
 
   const body = await req.json()

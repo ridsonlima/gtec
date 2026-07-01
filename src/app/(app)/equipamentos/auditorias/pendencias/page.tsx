@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, ChevronRight } from 'lucide-react'
 
@@ -22,7 +22,7 @@ type SP = { status?: string; severidade?: string }
 export default async function EquipamentosPendenciasPage({ searchParams }: { searchParams: SP }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const { status = '', severidade = '' } = searchParams
 

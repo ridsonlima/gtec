@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { ChevronLeft, Package, Truck, Tag, Banknote, Calendar, Wrench, ClipboardCheck, Receipt, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
@@ -36,7 +36,7 @@ const CONF_META: Record<string, { label: string; cls: string }> = {
 export default async function FrotaAtivoDetalhePage({ params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const ativo = await prisma.ativo.findUnique({
     where: { id: params.id },
@@ -82,7 +82,7 @@ export default async function FrotaAtivoDetalhePage({ params }: { params: { id: 
   const alocacoesHist = ativo.alocacoes.filter((a) => a.dataFim)
   const osAbertas     = ativo.ordensServico.filter((o) => ['aberta', 'em_execucao'].includes(o.status))
   const osHist        = ativo.ordensServico.filter((o) => ['concluida', 'cancelada'].includes(o.status))
-  const canEdit       = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canEdit       = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
   const canDelete     = ['master', 'admin'].includes(session.user.role)
   const TipoIcon      = ativo.tipo === 'veiculo' ? Truck : Package
 

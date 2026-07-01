@@ -5,7 +5,7 @@ import { apiSuccess, apiError } from '@/types/api'
 import { z } from 'zod'
 
 type Params = { params: { id: string } }
-const PODE = ['master', 'admin', 'manager']
+const PODE = ['master', 'admin', 'manager', 'supervisor']
 
 const PatchSchema = z.object({
   nome:         z.string().min(1).max(120).optional(),

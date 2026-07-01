@@ -11,9 +11,10 @@ interface Props {
   status: Status
   isAuditor: boolean
   canGestor: boolean
+  canOperar: boolean
 }
 
-export function AuditoriaAcoesBtn({ visitaId, status, isAuditor, canGestor }: Props) {
+export function AuditoriaAcoesBtn({ visitaId, status, isAuditor, canGestor, canOperar }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -36,7 +37,7 @@ export function AuditoriaAcoesBtn({ visitaId, status, isAuditor, canGestor }: Pr
     <div className="flex flex-col gap-2">
       {error && <p className="text-xs text-red-600">{error}</p>}
 
-      {status === 'agendada' && (isAuditor || canGestor) && (
+      {status === 'agendada' && (isAuditor || canOperar) && (
         <button
           onClick={() => action('iniciar')}
           disabled={loading}
@@ -47,7 +48,7 @@ export function AuditoriaAcoesBtn({ visitaId, status, isAuditor, canGestor }: Pr
         </button>
       )}
 
-      {status === 'em_andamento' && (isAuditor || canGestor) && (
+      {status === 'em_andamento' && (isAuditor || canOperar) && (
         <button
           onClick={() => action('concluir')}
           disabled={loading}

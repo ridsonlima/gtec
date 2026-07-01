@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { Truck, Package, Search, LayoutList } from 'lucide-react'
 import { NovoAtivoModal } from './NovoAtivoModal'
@@ -42,7 +42,7 @@ const CONFIG = {
 export async function AtivosListView({ tipo, searchParams }: { tipo: Tipo; searchParams: SP }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const cfg = CONFIG[tipo]
   const Icon = cfg.icon
@@ -100,7 +100,7 @@ export async function AtivosListView({ tipo, searchParams }: { tipo: Tipo; searc
     { value: 'inativo',    label: 'Inativos',    count: countByStatus.inativo ?? 0 },
   ]
 
-  const canEdit = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canEdit = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
 
   const itensAcumulados = ativos
     .filter((a) => a.status === 'alocado' && a.alocacoes[0])

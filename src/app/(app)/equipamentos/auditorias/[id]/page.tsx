@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { AuditoriaAcoesBtn } from '@/components/frota/AuditoriaAcoesBtn'
 import {
@@ -25,7 +25,7 @@ const CONF_META: Record<string, { label: string; cls: string; dot: string }> = {
 export default async function EquipamentosAuditoriaDetalhePage({ params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const visita = await prisma.auditoriaVisita.findUnique({
     where: { id: params.id },
@@ -58,6 +58,7 @@ export default async function EquipamentosAuditoriaDetalhePage({ params }: { par
 
   const isAuditor = visita.auditorId === session.user.id
   const canGestor = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canOperar = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
 
   return (
     <div className="space-y-5">
@@ -89,6 +90,7 @@ export default async function EquipamentosAuditoriaDetalhePage({ params }: { par
           status={visita.status as any}
           isAuditor={isAuditor}
           canGestor={canGestor}
+          canOperar={canOperar}
         />
       </div>
 

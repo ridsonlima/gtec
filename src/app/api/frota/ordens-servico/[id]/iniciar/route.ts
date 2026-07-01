@@ -7,7 +7,7 @@ import { apiSuccess, apiError } from '@/types/api'
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
-  if (!['master', 'admin', 'manager'].includes(session.user.role))
+  if (!['master', 'admin', 'manager', 'supervisor'].includes(session.user.role))
     return apiError('Sem permissão', 403)
 
   const os = await prisma.ordemServico.findUnique({ where: { id: params.id } })

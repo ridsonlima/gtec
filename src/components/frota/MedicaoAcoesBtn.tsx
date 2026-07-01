@@ -42,6 +42,9 @@ export function MedicaoAcoesBtn({ medicaoId, status, role, observacoes: obsInici
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().slice(0, 10))
 
   const canGestor    = ['master', 'admin', 'manager'].includes(role)
+  // Operação do dia a dia (editar rascunho, enviar para supervisor) — inclui supervisor.
+  // Ações ligadas a /pagamento (gerar guia, registrar pagamento) continuam em canGestor.
+  const canOperar    = ['master', 'admin', 'manager', 'supervisor'].includes(role)
   const canSupervisor = ['master', 'admin', 'director', 'manager', 'supervisor'].includes(role)
   const canMaster    = ['master', 'admin'].includes(role)
 
@@ -93,7 +96,7 @@ export function MedicaoAcoesBtn({ medicaoId, status, role, observacoes: obsInici
     guia_gerada: 'Aprovada',
   }
 
-  const podeEditar = canGestor && ['rascunho', 'rejeitada'].includes(status)
+  const podeEditar = canOperar && ['rascunho', 'rejeitada'].includes(status)
   const podeExcluir = canMaster && status === 'rascunho'
 
   return (
@@ -131,7 +134,7 @@ export function MedicaoAcoesBtn({ medicaoId, status, role, observacoes: obsInici
         )}
 
         {/* ── ETAPA 1: Rascunho ── */}
-        {status === 'rascunho' && canGestor && (
+        {status === 'rascunho' && canOperar && (
           <button
             onClick={() => action('enviar')}
             disabled={loading}

@@ -58,6 +58,9 @@ export default async function FrotaAuditoriaDetalhePage({ params }: { params: { 
 
   const isAuditor = visita.auditorId === session.user.id
   const canGestor = ['master', 'admin', 'manager'].includes(session.user.role)
+  // Iniciar/concluir visita: operação de campo, inclui supervisor. Cancelar
+  // continua só em canGestor (ação sensível).
+  const canOperar = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
 
   return (
     <div className="space-y-5">
@@ -89,6 +92,7 @@ export default async function FrotaAuditoriaDetalhePage({ params }: { params: { 
           status={visita.status as any}
           isAuditor={isAuditor}
           canGestor={canGestor}
+          canOperar={canOperar}
         />
       </div>
 

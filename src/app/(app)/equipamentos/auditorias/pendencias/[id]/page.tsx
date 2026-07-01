@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { isManagerOrAbove } from '@/lib/permissions'
+import { canViewRental } from '@/lib/permissions'
 import Link from 'next/link'
 import { PendenciaAcoesBtn } from '@/components/frota/PendenciaAcoesBtn'
 import { AlertTriangle, ArrowLeft, Calendar, Package } from 'lucide-react'
@@ -16,7 +16,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 export default async function EquipamentosPendenciaDetalhePage({ params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) redirect('/login')
-  if (!isManagerOrAbove(session.user.role)) redirect('/dashboard')
+  if (!canViewRental(session)) redirect('/dashboard')
 
   const pendencia = await prisma.pendenciaAuditoria.findUnique({
     where: { id: params.id },
@@ -33,7 +33,7 @@ export default async function EquipamentosPendenciaDetalhePage({ params }: { par
   const hoje = new Date()
   const vencida = pendencia.prazo && new Date(pendencia.prazo) < hoje && pendencia.status !== 'resolvida'
 
-  const canGestor = ['master', 'admin', 'manager'].includes(session.user.role)
+  const canGestor = ['master', 'admin', 'manager', 'supervisor'].includes(session.user.role)
 
   return (
     <div className="max-w-2xl space-y-5">
