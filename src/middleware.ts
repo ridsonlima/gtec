@@ -26,7 +26,10 @@ export default auth((req) => {
   }
 
   // Rotas de admin → apenas role=admin
-  const adminPaths = ['/admin', '/api/users']
+  // (/api/users fica de fora: GET/POST/PATCH/DELETE já checam permissão por
+  // operação dentro de cada handler — coordenador/supervisor/técnico precisam
+  // de GET /api/users para montar seletor de equipe e busca de colaboradores)
+  const adminPaths = ['/admin']
   if (adminPaths.some((p) => pathname.startsWith(p))) {
     if (!['master', 'admin', 'director'].includes(session.user.role)) {
       return NextResponse.redirect(new URL('/dashboard', req.url))
