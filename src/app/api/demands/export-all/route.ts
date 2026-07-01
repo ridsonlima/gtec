@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const areaId   = searchParams.get('areaId') ?? ''
+  const contractId = searchParams.get('contractId') ?? ''
   const status   = searchParams.get('status') ?? ''
   const priority = searchParams.get('priority') ?? ''
   const isOverdue = searchParams.get('isOverdue') === 'true'
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
 
   // Combina todos os filtros com AND
   const andClauses: any[] = [areaWhere]
+  if (contractId) andClauses.push({ contractId })
   if (status) andClauses.push({ status })
   if (priority) andClauses.push({ priority })
   if (isOverdue) andClauses.push({ isOverdue: true })

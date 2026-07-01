@@ -51,6 +51,7 @@ export default function DemandasPage() {
   const [status, setStatus]     = useState('')
   const [priority, setPriority] = useState('')
   const [areaId, setAreaId]     = useState('')
+  const [contractId, setContractId] = useState('')
   const [isOverdue, setIsOverdue] = useState(false)
   const [interarea, setInterarea] = useState(false)
   const [search, setSearch]     = useState('')
@@ -61,6 +62,7 @@ export default function DemandasPage() {
     ...(status   && { status }),
     ...(priority && { priority }),
     ...(areaId   && { areaId }),
+    ...(contractId && { contractId }),
     ...(isOverdue && { isOverdue: 'true' }),
     ...(interarea && { interarea: 'true' }),
     ...(search   && { search }),
@@ -69,7 +71,7 @@ export default function DemandasPage() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['demands', status, priority, areaId, isOverdue, interarea, search, page],
+    queryKey: ['demands', status, priority, areaId, contractId, isOverdue, interarea, search, page],
     queryFn: () =>
       fetch(`/api/demands?${params}`).then((r) => r.json()),
   })
@@ -80,18 +82,27 @@ export default function DemandasPage() {
     staleTime: 5 * 60 * 1000,
   })
 
+  // Contratos para o filtro — reduzidos à área selecionada, quando houver
+  const { data: contractsData } = useQuery({
+    queryKey: ['contracts-filter', areaId],
+    queryFn: () => fetch(`/api/contracts${areaId ? `?areaId=${areaId}` : ''}`).then((r) => r.json()),
+    staleTime: 5 * 60 * 1000,
+  })
+
   const areas   = areasData?.data ?? []
+  const contracts = contractsData?.data ?? []
   const demands = data?.data ?? []
   const total   = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1
 
-  const hasFilters = !!(status || priority || areaId || isOverdue || interarea || search)
+  const hasFilters = !!(status || priority || areaId || contractId || isOverdue || interarea || search)
 
   function buildExportUrl() {
     const p = new URLSearchParams()
     if (status)   p.set('status', status)
     if (priority) p.set('priority', priority)
     if (areaId)   p.set('areaId', areaId)
+    if (contractId) p.set('contractId', contractId)
     if (isOverdue) p.set('isOverdue', 'true')
     if (interarea) p.set('interarea', 'true')
     if (search)   p.set('search', search)
@@ -173,13 +184,28 @@ export default function DemandasPage() {
           {areas.length > 0 && (
             <select
               value={areaId}
-              onChange={(e) => { setAreaId(e.target.value); setPage(1) }}
+              onChange={(e) => { setAreaId(e.target.value); setContractId(''); setPage(1) }}
               className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm
                          focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todas as áreas</option>
               {areas.map((a: any) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          )}
+
+          {contracts.length > 0 && (
+            <select
+              value={contractId}
+              onChange={(e) => { setContractId(e.target.value); setPage(1) }}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm max-w-56
+                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Filtrar por contrato"
+            >
+              <option value="">Todos os contratos</option>
+              {contracts.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.number} — {c.name}</option>
               ))}
             </select>
           )}
@@ -229,7 +255,7 @@ export default function DemandasPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setStatus(''); setPriority(''); setAreaId(''); setIsOverdue(false); setInterarea(false); setSearch(''); setPage(1) }}
+              onClick={() => { setStatus(''); setPriority(''); setAreaId(''); setContractId(''); setIsOverdue(false); setInterarea(false); setSearch(''); setPage(1) }}
               className="text-xs text-gray-400 hover:text-gray-600 underline"
             >
               Limpar filtros
