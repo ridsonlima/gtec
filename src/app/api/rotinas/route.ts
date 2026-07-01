@@ -3,11 +3,14 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
 import { canAccessArea, canManageRotina } from '@/lib/permissions'
-import { periodKey, periodLabel, type Frequencia } from '@/lib/rotinaPeriodo'
+import { periodKey, periodEnd, periodLabel, type Frequencia } from '@/lib/rotinaPeriodo'
 
 const FREQS = ['diaria', 'semanal', 'mensal']
 
 // GET /api/rotinas?areaId=&escopo=minhas|todas
+// Retorna cada rotina com a OCORRÊNCIA do ciclo atual (estado/prazo/status) e o
+// logbook (registros) desse ciclo. Se o ciclo atual ainda não foi materializado
+// (cron não rodou), devolve uma ocorrência sintética "aberta" (id=null).
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return apiError('Não autenticado', 401)
@@ -24,57 +27,82 @@ export async function GET(req: NextRequest) {
   })
   if (rotinas.length === 0) return apiSuccess([])
 
-  // Nomes dos responsáveis (sem relação formal no schema)
-  const userIds = Array.from(new Set(rotinas.map((r) => r.responsavelId)))
-  const periodos = Array.from(new Set(rotinas.map((r) => periodKey(r.frequencia as Frequencia))))
+  // ciclo atual de cada rotina
+  const pkByRotina = new Map(rotinas.map((r) => [r.id, periodKey(r.frequencia as Frequencia)]))
 
-  const conclusoes = await prisma.rotinaConclusao.findMany({
-    where: { rotinaId: { in: rotinas.map((r) => r.id) }, periodo: { in: periodos } },
+  // ocorrências do ciclo atual já materializadas
+  const ocorrencias = await prisma.rotinaOcorrencia.findMany({
+    where: { rotinaId: { in: rotinas.map((r) => r.id) }, periodo: { in: Array.from(new Set(pkByRotina.values())) } },
   })
-  const conclMap = new Map(conclusoes.map((c) => [`${c.rotinaId}|${c.periodo}`, c]))
-  const concluidoPorIds = conclusoes.map((c) => c.concluidoPorId)
+  const ocByKey = new Map(ocorrencias.map((o) => [`${o.rotinaId}|${o.periodo}`, o]))
 
-  const allUserIds = Array.from(new Set([...userIds, ...concluidoPorIds]))
-  const users = await prisma.user.findMany({ where: { id: { in: allUserIds } }, select: { id: true, name: true } })
-  const userMap = new Map(users.map((u) => [u.id, u.name]))
+  // registros (logbook) do ciclo atual + anexos
+  const ocIds = ocorrencias.map((o) => o.id)
+  const registros = ocIds.length
+    ? await prisma.rotinaRegistro.findMany({ where: { ocorrenciaId: { in: ocIds } }, orderBy: { createdAt: 'asc' } })
+    : []
+  const regByOc = new Map<string, typeof registros>()
+  for (const rg of registros) {
+    const list = regByOc.get(rg.ocorrenciaId) ?? []
+    list.push(rg)
+    regByOc.set(rg.ocorrenciaId, list)
+  }
 
-  const entregaIds = conclusoes.map((c) => c.id)
-  const anexos = entregaIds.length
+  const regIds = registros.map((r) => r.id)
+  const anexos = regIds.length
     ? await prisma.attachment.findMany({
-        where: { objectType: 'rotina_entrega', objectId: { in: entregaIds } },
+        where: { objectType: 'rotina_registro', objectId: { in: regIds } },
         orderBy: { createdAt: 'desc' },
         include: { uploadedBy: { select: { id: true, name: true } } },
       })
     : []
-  const anexosByEntrega = new Map<string, any[]>()
+  const anexosByReg = new Map<string, any[]>()
   for (const a of anexos) {
-    const list = anexosByEntrega.get(a.objectId) ?? []
+    const list = anexosByReg.get(a.objectId) ?? []
     list.push(a)
-    anexosByEntrega.set(a.objectId, list)
+    anexosByReg.set(a.objectId, list)
   }
 
+  // nomes de usuários (responsáveis + autores + quem fechou)
+  const userIds = new Set<string>()
+  rotinas.forEach((r) => userIds.add(r.responsavelId))
+  registros.forEach((r) => userIds.add(r.autorId))
+  ocorrencias.forEach((o) => { if (o.fechadoPorId) userIds.add(o.fechadoPorId) })
+  const users = await prisma.user.findMany({ where: { id: { in: Array.from(userIds) } }, select: { id: true, name: true } })
+  const userMap = new Map(users.map((u) => [u.id, u.name]))
+
   const result = rotinas.map((r) => {
-    const pk = periodKey(r.frequencia as Frequencia)
-    const c = conclMap.get(`${r.id}|${pk}`)
+    const freq = r.frequencia as Frequencia
+    const periodo = pkByRotina.get(r.id)!
+    const oc = ocByKey.get(`${r.id}|${periodo}`)
+    const regs = oc ? (regByOc.get(oc.id) ?? []) : []
+
     return {
       id: r.id,
       title: r.title,
       descricao: r.descricao,
       instrucoes: r.instrucoes,
       frequencia: r.frequencia,
-      cicloLabel: periodLabel(r.frequencia as Frequencia),
+      cicloLabel: periodLabel(freq),
       responsavel: { id: r.responsavelId, name: userMap.get(r.responsavelId) ?? '—' },
       ehMinha: r.responsavelId === session.user.id,
-      entrega: c
-        ? {
-            id: c.id,
-            status: c.status,
-            texto: c.texto,
-            concluidoEm: c.concluidoEm,
-            concluidoPor: userMap.get(c.concluidoPorId) ?? '—',
-            anexos: anexosByEntrega.get(c.id) ?? [],
-          }
-        : null,
+      ocorrencia: {
+        id: oc?.id ?? null,
+        periodo,
+        prazo: oc?.prazo ?? periodEnd(freq, periodo),
+        estado: oc?.estado ?? 'aberta',
+        statusFechamento: oc?.statusFechamento ?? null,
+        resumo: oc?.resumo ?? null,
+        fechadoEm: oc?.fechadoEm ?? null,
+        fechadoPor: oc?.fechadoPorId ? (userMap.get(oc.fechadoPorId) ?? '—') : null,
+        registros: regs.map((rg) => ({
+          id: rg.id,
+          texto: rg.texto,
+          autor: userMap.get(rg.autorId) ?? '—',
+          createdAt: rg.createdAt,
+          anexos: anexosByReg.get(rg.id) ?? [],
+        })),
+      },
     }
   })
 

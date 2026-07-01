@@ -20,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const data: any = {}
   if (typeof body.title === 'string' && body.title.trim()) data.title = body.title.trim()
   if (typeof body.descricao === 'string') data.descricao = body.descricao.trim() || null
+  if (typeof body.instrucoes === 'string') data.instrucoes = body.instrucoes.trim() || null
   if (body.frequencia && FREQS.includes(body.frequencia)) data.frequencia = body.frequencia
 
   const updated = await prisma.rotinaArea.update({ where: { id: params.id }, data })
