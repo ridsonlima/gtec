@@ -33,6 +33,7 @@ export default async function KanbanPage() {
     take: 200,
     include: {
       area:        { select: { name: true } },
+      contract:    { select: { id: true, number: true, name: true } },
       responsible: { select: { id: true, name: true } },
       updates:     { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
     },

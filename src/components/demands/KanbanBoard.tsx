@@ -30,6 +30,7 @@ type Demand = {
   isOverdue: boolean
   dueDate: string | Date | null
   area: { name: string }
+  contract?: { id: string; number: string; name: string } | null
   responsible: { name: string }
   substituicaoInfo?: { substitutoNome: string } | null
   unread?: boolean
@@ -48,6 +49,7 @@ export function KanbanBoard({ initialDemands }: { initialDemands: Demand[] }) {
   const draggedRef = useRef(false)
 
   const [filterArea,     setFilterArea]     = useState('')
+  const [filterContract, setFilterContract] = useState('')
   const [filterPerson,   setFilterPerson]   = useState('')
   const [filterDeadline, setFilterDeadline] = useState('')
 
@@ -64,10 +66,18 @@ export function KanbanBoard({ initialDemands }: { initialDemands: Demand[] }) {
     () => Array.from(new Set(demands.map((d) => d.responsible.name))).sort(),
     [demands],
   )
+  const contractOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const d of demands) {
+      if (d.contract) map.set(d.contract.id, `${d.contract.number} — ${d.contract.name}`)
+    }
+    return Array.from(map, ([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label))
+  }, [demands])
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
       if (filterArea   && d.area.name        !== filterArea)   return false
+      if (filterContract && d.contract?.id   !== filterContract) return false
       if (filterPerson && d.responsible.name !== filterPerson) return false
       if (filterDeadline) {
         if (!d.dueDate) return false
@@ -78,10 +88,10 @@ export function KanbanBoard({ initialDemands }: { initialDemands: Demand[] }) {
       }
       return true
     })
-  }, [demands, filterArea, filterPerson, filterDeadline])
+  }, [demands, filterArea, filterContract, filterPerson, filterDeadline])
 
-  const hasFilter = filterArea || filterPerson || filterDeadline
-  const clearFilters = () => { setFilterArea(''); setFilterPerson(''); setFilterDeadline('') }
+  const hasFilter = filterArea || filterContract || filterPerson || filterDeadline
+  const clearFilters = () => { setFilterArea(''); setFilterContract(''); setFilterPerson(''); setFilterDeadline('') }
 
   async function moveTo(demandId: string, newStatus: Status) {
     setMoving(demandId)
@@ -143,6 +153,20 @@ export function KanbanBoard({ initialDemands }: { initialDemands: Demand[] }) {
             <option key={a} value={a}>{a}</option>
           ))}
         </select>
+
+        {contractOptions.length > 0 && (
+          <select
+            value={filterContract}
+            onChange={(e) => setFilterContract(e.target.value)}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[160px] max-w-[240px]"
+            title="Filtrar por contrato"
+          >
+            <option value="">Todos os contratos</option>
+            {contractOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+        )}
 
         <select
           value={filterPerson}
