@@ -210,7 +210,18 @@ function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClos
   const [prioridade, setPrioridade] = useState('normal')
   const [alvoTipo, setAlvoTipo] = useState('todos')
   const [alvoAreaId, setAlvoAreaId] = useState('')
+  const [alvoUsuarioId, setAlvoUsuarioId] = useState('')
+  const [usuarioNome, setUsuarioNome] = useState('')
+  const [usuarioBusca, setUsuarioBusca] = useState('')
+  const [usuarioRes, setUsuarioRes] = useState<{ id: string; name: string; role: string }[]>([])
   const [exigeAceite, setExigeAceite] = useState(true)
+
+  async function buscarUsuario(q: string) {
+    setUsuarioBusca(q); setAlvoUsuarioId(''); setUsuarioNome('')
+    if (q.trim().length < 2) { setUsuarioRes([]); return }
+    const d = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`).then((r) => r.json()).catch(() => null)
+    setUsuarioRes(d?.data ?? [])
+  }
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -218,12 +229,18 @@ function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClos
     if (!title.trim()) return setError('Informe o título')
     if (!body.trim()) return setError('Informe o conteúdo')
     if (alvoTipo === 'area' && !alvoAreaId) return setError('Selecione a área')
+    if (alvoTipo === 'usuario' && !alvoUsuarioId) return setError('Selecione o usuário')
     setSaving(true); setError('')
     try {
       const res = await fetch('/api/comunicados', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, categoria, prioridade, alvoTipo, alvoAreaId: alvoTipo === 'area' ? alvoAreaId : null, exigeAceite }),
+        body: JSON.stringify({
+          title, body, categoria, prioridade, alvoTipo,
+          alvoAreaId: alvoTipo === 'area' ? alvoAreaId : null,
+          alvoUsuarioId: alvoTipo === 'usuario' ? alvoUsuarioId : null,
+          exigeAceite,
+        }),
       })
       const d = await res.json()
       if (!res.ok || d?.success === false) { setError(d?.error ?? 'Erro ao publicar'); return }
@@ -272,6 +289,7 @@ function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClos
           <select value={alvoTipo} onChange={(e) => setAlvoTipo(e.target.value)} className={INPUT}>
             <option value="todos">Todos</option>
             <option value="area">Área específica</option>
+            <option value="usuario">Usuário específico</option>
           </select>
         </div>
       </div>
@@ -283,6 +301,35 @@ function NovoComunicadoForm({ areas, onClose, onSaved }: { areas: Area[]; onClos
             <option value="">Selecione…</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
+        </div>
+      )}
+
+      {alvoTipo === 'usuario' && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Usuário *</label>
+          {alvoUsuarioId ? (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm">
+              <span className="font-medium text-gray-800">{usuarioNome}</span>
+              <button type="button" onClick={() => { setAlvoUsuarioId(''); setUsuarioNome(''); setUsuarioBusca('') }} className="text-xs text-blue-600 hover:underline">trocar</button>
+            </div>
+          ) : (
+            <div className="relative">
+              <input value={usuarioBusca} onChange={(e) => buscarUsuario(e.target.value)} placeholder="Buscar pessoa pelo nome…" className={INPUT} />
+              {usuarioRes.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+                  {usuarioRes.map((u) => (
+                    <button key={u.id} type="button" onClick={() => { setAlvoUsuarioId(u.id); setUsuarioNome(u.name); setUsuarioRes([]); setUsuarioBusca('') }} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2">
+                      <span className="font-medium">{u.name}</span>
+                      <span className="text-xs text-gray-400">({u.role})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {usuarioBusca.trim().length >= 2 && usuarioRes.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">Nenhuma pessoa encontrada</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
