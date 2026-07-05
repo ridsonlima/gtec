@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiSuccess, apiError } from '@/types/api'
-import { canUpdateDemand } from '@/lib/permissions'
+import { canApproveDeadline } from '@/lib/permissions'
 
 export async function PATCH(
   req: NextRequest,
@@ -18,8 +18,8 @@ export async function PATCH(
   if (!demand) return apiError('Demanda não encontrada', 404)
 
   const collaboratorUserIds = demand.collaborators.map((c) => c.userId)
-  if (!canUpdateDemand(session, { ...demand, collaboratorUserIds })) {
-    return apiError('Apenas coordenadores podem revisar solicitações de prazo', 403)
+  if (!canApproveDeadline(session, { ...demand, collaboratorUserIds })) {
+    return apiError('Apenas o coordenador da área pode aprovar prorrogações de prazo', 403)
   }
 
   const extensionReq = await prisma.deadlineExtensionRequest.findUnique({

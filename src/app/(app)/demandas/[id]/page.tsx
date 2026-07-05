@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { canAccessDemand, canUpdateDemand, canContributeToDemand } from '@/lib/permissions'
+import { canAccessDemand, canUpdateDemand, canContributeToDemand, canApproveDeadline } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
@@ -297,7 +297,7 @@ export default async function DemandDetailPage({ params }: { params: { id: strin
           reviewedAt: r.reviewedAt?.toISOString() ?? null,
         }))}
         canRequest={canContribute && !['completed', 'cancelled'].includes(demand.status)}
-        canReview={canEdit}
+        canReview={canApproveDeadline(session, { ...demand, collaboratorUserIds })}
       />
 
       {/* Painel de aceite (apenas demandas interárea) */}

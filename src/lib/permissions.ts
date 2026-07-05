@@ -121,6 +121,16 @@ export function canContributeToDemand(session: Session, demand: DemandAccess): b
   return demand.collaboratorUserIds?.includes(session.user.id) ?? false
 }
 
+// Aprovar/rejeitar prorrogação de prazo: SÓ o coordenador (manager) da área FIM
+// (executora = demand.areaId) — ou diretoria. Supervisor/técnico NÃO aprovam,
+// mesmo sendo responsáveis pela demanda.
+export function canApproveDeadline(session: Session, demand: DemandAccess): boolean {
+  const { role } = session.user
+  if (role === 'master' || role === 'admin' || role === 'director') return true
+  if (role === 'manager') return canAccessArea(session, demand.areaId)
+  return false
+}
+
 export function canComment(session: Session, areaId?: string): boolean {
   const { role } = session.user
   if (role === 'master' || role === 'admin' || role === 'director') return true
