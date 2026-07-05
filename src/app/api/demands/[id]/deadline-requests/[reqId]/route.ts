@@ -28,14 +28,19 @@ export async function PATCH(
   if (!extensionReq || extensionReq.demandId !== params.id) {
     return apiError('Solicitação não encontrada', 404)
   }
-  if (extensionReq.status !== 'pending') {
-    return apiError('Solicitação já foi revisada', 409)
-  }
-
   const { action, reviewNote } = await req.json()
   if (action !== 'approve' && action !== 'reject') {
     return apiError('Ação inválida', 400)
   }
+  // Aprovar só vale para pendente; rejeitar vale para pendente (recusa) OU aprovada (reverter).
+  if (action === 'approve' && extensionReq.status !== 'pending') {
+    return apiError('Solicitação já foi revisada', 409)
+  }
+  if (action === 'reject' && extensionReq.status === 'rejected') {
+    return apiError('Solicitação já foi rejeitada', 409)
+  }
+
+  const eraAprovada = extensionReq.status === 'approved'
 
   const result = await prisma.$transaction(async (tx) => {
     const updated = await tx.deadlineExtensionRequest.update({
@@ -45,6 +50,8 @@ export async function PATCH(
         reviewedById: session.user.id,
         reviewedAt: new Date(),
         reviewNote: reviewNote?.trim() || null,
+        // Ao aprovar, guarda o prazo anterior para permitir reverter depois.
+        ...(action === 'approve' ? { previousDueDate: demand.dueDate } : {}),
       },
       include: {
         requestedBy: { select: { id: true, name: true } },
@@ -57,6 +64,19 @@ export async function PATCH(
         where: { id: params.id },
         data: { dueDate: extensionReq.proposedDate, isOverdue: false },
       })
+    } else if (eraAprovada && extensionReq.previousDueDate) {
+      // Reverter uma prorrogação já aprovada: restaura o prazo anterior (se ainda em vigor).
+      const emVigor = demand.dueDate.getTime() === extensionReq.proposedDate.getTime()
+      if (emVigor) {
+        const inicioHoje = new Date(); inicioHoje.setHours(0, 0, 0, 0)
+        await tx.demand.update({
+          where: { id: params.id },
+          data: {
+            dueDate: extensionReq.previousDueDate,
+            isOverdue: new Date(extensionReq.previousDueDate) < inicioHoje,
+          },
+        })
+      }
     }
 
     return updated

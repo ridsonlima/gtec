@@ -248,6 +248,15 @@ export function DeadlineExtensionPanel({ demandId, currentDueDate, requests, can
                         {r.reviewNote && <> · "{r.reviewNote}"</>}
                       </p>
                     )}
+                    {canReview && r.status === 'approved' && (
+                      <button
+                        onClick={() => { if (confirm('Reverter esta prorrogação? O prazo da demanda voltará para a data anterior.')) review(r.id, 'reject') }}
+                        disabled={reviewing === r.id}
+                        className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-white border border-red-200 text-red-600 text-[11px] font-medium rounded-lg hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <XCircle className="w-3 h-3" /> {reviewing === r.id ? 'Revertendo…' : 'Reverter prorrogação'}
+                      </button>
+                    )}
                   </div>
                 )
               })}

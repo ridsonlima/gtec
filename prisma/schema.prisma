@@ -631,7 +631,8 @@ model DeadlineExtensionRequest {
   id            String    @id @default(uuid())
   demandId      String    @map("demand_id")
   requestedById String    @map("requested_by_id")
-  proposedDate  DateTime  @map("proposed_date")
+  proposedDate    DateTime  @map("proposed_date")
+  previousDueDate DateTime? @map("previous_due_date") // prazo antes da aprovação (para reverter)
   justification String
   status        String    @default("pending") // pending | approved | rejected
   reviewedById  String?   @map("reviewed_by_id")
